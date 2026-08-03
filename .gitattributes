@@ -1,0 +1,3 @@
+# Keep every file byte-identical to upstream. No line-ending conversion,
+# so diffs against the upstream snapshot only ever show real changes.
+* -text
