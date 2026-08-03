@@ -698,7 +698,7 @@ def run_addon(addon='plugin.video.redlight', block=False):
 	return execute_builtin('RunAddon(%s)' % addon, block)
 
 def external():
-	return 'redlight' not in get_infolabel('Container.PluginName')
+	return 'plugin.video.redlight' not in get_infolabel('Container.PluginName')
 
 def home():
 	return xbmcgui.getCurrentWindowId() == 10000
@@ -764,6 +764,14 @@ def schedule_widget_refresh(silent=True, reload_skin=False):
 	if service_shutting_down(): return
 	url = 'plugin://plugin.video.redlight/?mode=refresh_widgets&silent=%s&reload_skin=%s' % ('true' if silent else 'false', 'true' if reload_skin else 'false')
 	execute_builtin('AlarmClock(redlight_widget_refresh,RunPlugin(%s),00:00:02,silent)' % url)
+
+def refresh_after_list_change(in_container=False):
+	# Membership of a list changed (add or remove).
+	# in_container refreshes the list you are looking at, straight away.
+	# The scheduled pass is what home screen widgets need: a widget is never
+	# the active container, so a plain container refresh never reaches it.
+	if in_container: kodi_refresh()
+	schedule_widget_refresh(silent=True)
 
 def mark_playback_widget_refresh():
 	try:

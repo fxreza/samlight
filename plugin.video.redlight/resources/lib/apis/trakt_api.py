@@ -536,6 +536,7 @@ def add_to_list(user, slug, data):
 	if result['added']['movies'] + result['added']['shows'] == 0: return kodi_utils.notification('Error', 3000)
 	kodi_utils.notification('Success', 3000)
 	trakt_sync_activities()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('my_lists') or kodi_utils.external())
 	return result
 
 def remove_from_list(user, slug, data):
@@ -544,7 +545,7 @@ def remove_from_list(user, slug, data):
 		return kodi_utils.notification(kodi_utils.LIST_ITEM_NOT_IN_LIST, 3000)
 	kodi_utils.notification('Success', 3000)
 	trakt_sync_activities()
-	if kodi_utils.path_check('my_lists') or kodi_utils.external(): kodi_utils.kodi_refresh()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('my_lists') or kodi_utils.external())
 	return result
 
 def _trakt_media_ids_match(ids, tmdb_id=None, imdb_id=None, tvdb_id=None):
@@ -651,6 +652,7 @@ def add_to_watchlist(data):
 	if result['added']['movies'] + result['added']['shows'] == 0: return kodi_utils.notification('Error', 3000)
 	kodi_utils.notification('Success', 3000)
 	trakt_sync_activities()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('trakt_watchlist') or kodi_utils.external())
 	return result
 
 def remove_from_watchlist(data):
@@ -659,7 +661,7 @@ def remove_from_watchlist(data):
 		return kodi_utils.notification(kodi_utils.LIST_ITEM_NOT_IN_LIST, 3000)
 	kodi_utils.notification('Success', 3000)
 	trakt_sync_activities()
-	if kodi_utils.path_check('trakt_watchlist') or kodi_utils.external(): kodi_utils.kodi_refresh()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('trakt_watchlist') or kodi_utils.external())
 	return result
 
 def add_to_collection(data):
@@ -668,6 +670,7 @@ def add_to_collection(data):
 	if result['added']['movies'] + result['added']['episodes'] == 0: return kodi_utils.notification('Error', 3000)
 	kodi_utils.notification('Success', 3000)
 	trakt_sync_activities()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('trakt_collection') or kodi_utils.external())
 	return result
 
 def remove_from_collection(data):
@@ -676,7 +679,7 @@ def remove_from_collection(data):
 		return kodi_utils.notification(kodi_utils.LIST_ITEM_NOT_IN_LIST, 3000)
 	kodi_utils.notification('Success', 3000)
 	trakt_sync_activities()
-	if kodi_utils.path_check('trakt_collection') or kodi_utils.external(): kodi_utils.kodi_refresh()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('trakt_collection') or kodi_utils.external())
 	return result
 
 def add_to_favorites(data):
@@ -688,6 +691,7 @@ def add_to_favorites(data):
 		return kodi_utils.notification('Error', 3000)
 	kodi_utils.notification('Success', 3000)
 	trakt_sync_activities()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('trakt_favorites') or kodi_utils.external())
 	return result
 
 def remove_from_favorites(data):
@@ -696,7 +700,7 @@ def remove_from_favorites(data):
 		return kodi_utils.notification(kodi_utils.LIST_ITEM_NOT_IN_LIST, 3000)
 	kodi_utils.notification('Success', 3000)
 	trakt_sync_activities()
-	if kodi_utils.path_check('trakt_favorites') or kodi_utils.external(): kodi_utils.kodi_refresh()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('trakt_favorites') or kodi_utils.external())
 	return result
 
 def hide_unhide_progress_items(params):

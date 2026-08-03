@@ -227,7 +227,7 @@ def make_new_personal_list(params):
 	if chosen_list:
 		new_contents = process_trakt_list(chosen_list)
 		result = personal_lists_cache.add_many_list_items(list_name, author, new_contents)
-	if not external_creation and any([kodi_utils.path_check('get_personal_lists') or kodi_utils.external()]): kodi_utils.kodi_refresh()
+	if not external_creation: kodi_utils.refresh_after_list_change(any([kodi_utils.path_check('get_personal_lists') or kodi_utils.external()]))
 	return list_name, author
 
 def adjust_personal_list_properties(params):
@@ -583,7 +583,7 @@ def external(params):
 	if 'view' in action:
 		kodi_utils.activate_window({'mode': 'personal_lists.external_process_view', 'item_list': json.dumps(item_list), 'media_type': media_type,
 									'list_type': list_type, 'list_name': list_name}, True)
-	if action == 'import' and (kodi_utils.path_check('get_personal_lists') or kodi_utils.external()): kodi_utils.kodi_refresh()
+	if action == 'import': kodi_utils.refresh_after_list_change(kodi_utils.path_check('get_personal_lists') or kodi_utils.external())
 
 def unique_list_check(list_name, author='Unknown'):
 	contents = personal_lists_cache.get_lists()

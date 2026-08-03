@@ -223,7 +223,7 @@ def personallists_manager_choice(params):
 	from caches.personal_lists_cache import personal_lists_cache
 	result = personal_lists_cache.add_remove_list_item(list_name, author, action, new_contents)
 	kodi_utils.notification(result, 3000)
-	if action == 'remove' and any([kodi_utils.path_check(list_name) or kodi_utils.external()]): kodi_utils.kodi_refresh()
+	kodi_utils.refresh_after_list_change(action == 'remove' and any([kodi_utils.path_check(list_name) or kodi_utils.external()]))
 
 def tmdblists_manager_choice(params):
 	try:
@@ -273,6 +273,7 @@ def _tmdblists_manager_choice(params):
 		tmdb_lists_cache.clear_watchfavrecs(list_id, media_type)
 		if not success: return
 		kodi_utils.notification('Success', 3000)
+		kodi_utils.refresh_after_list_change(kodi_utils.path_check(list_id) or kodi_utils.external())
 		return
 	item_in_list = False
 	if action == 'list_add_new':
@@ -293,9 +294,9 @@ def _tmdblists_manager_choice(params):
 		remove_from_tmdb_list(list_id, new_contents)
 		tmdb_lists_cache.clear_list(list_id)
 		tmdb_lists_cache.clear_all_lists()
-	if 'remove' in action and any([kodi_utils.path_check(str(list_id)) or kodi_utils.external()]):
-		kodi_utils.sleep(500)
-		kodi_utils.kodi_refresh()
+	in_container = 'remove' in action and any([kodi_utils.path_check(str(list_id)) or kodi_utils.external()])
+	if in_container: kodi_utils.sleep(500)
+	kodi_utils.refresh_after_list_change(in_container)
 
 def favorites_manager_choice(params):
 	from caches.favorites_cache import favorites_cache
@@ -313,7 +314,7 @@ def favorites_manager_choice(params):
 	if not kodi_utils.confirm_dialog(heading=heading, text=text): return
 	success = function(media_type, tmdb_id, title)
 	if success:
-		if refresh: kodi_utils.kodi_refresh()
+		kodi_utils.refresh_after_list_change(refresh)
 		kodi_utils.notification('Success', 3500)
 	else: kodi_utils.notification('Error', 3500)
 	if people_favorite and success: return text

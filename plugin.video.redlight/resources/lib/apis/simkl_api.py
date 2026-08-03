@@ -394,8 +394,7 @@ def _simkl_refresh_after_list_change(listname=None, media_type='movie', media_ki
 	else: clear_simkl_list_status_cache('shows')
 	if settings.watched_indicators() == 2:
 		simkl_sync_activities()
-	if kodi_utils.path_check('simkl') or kodi_utils.external():
-		kodi_utils.kodi_refresh()
+	kodi_utils.refresh_after_list_change(kodi_utils.path_check('simkl') or kodi_utils.external())
 
 def _simkl_id_match(item_ids, imdb_id=None, tvdb_id=None, tmdb_id=None, simkl_id=None):
 	if not isinstance(item_ids, dict): return False
