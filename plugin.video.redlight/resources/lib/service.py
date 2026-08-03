@@ -340,6 +340,29 @@ class ServiceExpiryAlerts:
 			except Exception as e: kodi_utils.logger('ServiceExpiryAlerts', str(e))
 		return kodi_utils.logger('Red Light', 'ServiceExpiryAlerts Service Finished')
 
+class CloudBackupMonitor:
+	def run(self, monitor):
+		kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Starting')
+		from modules.cloud_backup import backup_due, run_backup
+		player = kodi_utils.kodi_player()
+		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
+		# Last of the daemons to start: keeps a multi-megabyte upload clear of the boot
+		# storm, and gives wifi time to associate on a cold start.
+		wait_for_abort(180)
+		while not monitor.abortRequested():
+			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
+			try:
+				if backup_due() and not kodi_utils.service_shutting_down(monitor):
+					status, message = run_backup(silent=True)
+					kodi_utils.logger('Red Light', 'Cloud Backup %s - %s' % (status, message))
+			except Exception as e: kodi_utils.logger('Red Light', 'Cloud Backup Failed: %s' % str(e))
+			# Tick often, but the stored last_run decides when work actually happens - so a
+			# device that was unplugged for days catches up instead of missing those days.
+			wait_for_abort(1800)
+		try: del player
+		except: pass
+		return kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Finished')
+
 class AddonXMLCheck:
 	def run(self):
 		kodi_utils.logger('Red Light', 'AddonXMLCheck Service Starting')
@@ -375,6 +398,7 @@ class RedLightMonitor(Monitor):
 		try: AutoStart().run(self)
 		except Exception as e: kodi_utils.logger('AutoStart', str(e))
 		_start_daemon(lambda: ServiceExpiryAlerts().run(self))
+		_start_daemon(lambda: CloudBackupMonitor().run(self))
 
 	def onNotification(self, sender, method, data):
 		if method in ('GUI.OnScreensaverActivated', 'System.OnSleep'):

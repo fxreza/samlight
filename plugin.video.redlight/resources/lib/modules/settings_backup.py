@@ -10,7 +10,8 @@ from modules.import_export_utils import offer_save_export_directory, pick_export
 
 SETTINGS_BACKUP_FORMAT = 1
 SETTINGS_BACKUP_MASK = '.zip'
-BACKUP_DATABASES = ('settings_db', 'navigator_db', 'personal_lists_db', 'discover_db', 'episode_groups_db')
+BACKUP_DATABASES = ('settings_db', 'navigator_db', 'personal_lists_db', 'discover_db', 'episode_groups_db',
+					'watched_db', 'favorites_db', 'list_sort_db')
 
 
 def export_settings(params):
@@ -123,13 +124,15 @@ def _build_manifest(inventory):
 	}
 
 
-def _write_settings_zip(dest_path, inventory):
+def _write_settings_zip(dest_path, inventory, source_dir=None):
+	# source_dir lets the cloud backup zip consistent sqlite snapshots instead of the live
+	# (WAL mode) database files. Left as None this behaves exactly as it always has.
 	profile = kodi_utils.translate_path(kodi_utils.addon_profile())
 	manifest = _build_manifest(inventory)
 	with ZipFile(dest_path, 'w', ZIP_DEFLATED) as archive:
 		archive.writestr('manifest.json', json.dumps(manifest, indent=2, ensure_ascii=False))
 		for item in inventory['databases']:
-			src = database_locations(item['key'])
+			src = os.path.join(source_dir, item['filename']) if source_dir else database_locations(item['key'])
 			archive.write(src, 'databases/%s' % item['filename'])
 		images_path = os.path.join(profile, 'images')
 		if inventory['images'] and os.path.isdir(images_path):
@@ -170,7 +173,7 @@ def _zip_inventory(archive, manifest):
 def _export_preview_text(filename, inventory):
 	lines = [
 		'[B]%s[/B]' % filename,
-		'Settings, menus, lists, and preferences from this device.',
+		'Settings, menus, lists, favorites and watch history from this device.',
 	]
 	if inventory['images']:
 		lines.append('%s custom list image(s).' % inventory['images'])
@@ -183,8 +186,8 @@ def _import_confirm_text(path, manifest, inventory):
 		'[B]%s[/B]' % os.path.basename(path),
 		'From Red Light %s (%s)' % (manifest.get('addon_version') or 'unknown', (manifest.get('exported') or 'unknown')[:10]),
 		'',
-		'This replaces your current Red Light settings, menus, and lists.',
-		'Favorites and watch history are not changed.',
+		'This replaces your current Red Light settings, menus, lists,',
+		'favorites, watched status and resume points.',
 	]
 	if inventory['images']:
 		lines.append('%s custom list image(s) will be restored.' % inventory['images'])

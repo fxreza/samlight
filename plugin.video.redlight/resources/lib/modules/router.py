@@ -337,6 +337,9 @@ def routing(sys):
 	elif 'settings_backup.' in mode:
 		from modules import settings_backup
 		return getattr(settings_backup, mode.split('.', 1)[1])(params)
+	elif 'cloud_backup.' in mode:
+		from modules import cloud_backup
+		return getattr(cloud_backup, mode.split('.', 1)[1])(params)
 	elif 'kodi_favorites.' in mode:
 		from modules import kodi_favorites_backup
 		return getattr(kodi_favorites_backup, mode.split('.', 1)[1])(params)

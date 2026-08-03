@@ -104,7 +104,7 @@ def _new_setting_value(setting_id, setting_default, currentsettings, had_existin
 		return setting_default
 	return currentsettings.get(old_setting_id, setting_default)
 
-_CREDENTIAL_STRING_SETTINGS = frozenset(('tmdb_api', 'trakt.client', 'trakt.secret', 'tmdb.lists_read_token', 'omdb_api'))
+_CREDENTIAL_STRING_SETTINGS = frozenset(('tmdb_api', 'trakt.client', 'trakt.secret', 'tmdb.lists_read_token', 'omdb_api', 'cloud_backup.token'))
 
 def normalize_credential_string(value):
 	if value in (None, 'empty_setting'): return ''
@@ -1138,6 +1138,15 @@ def default_settings():
 {'setting_id': 'premium_download_directory', 'setting_type': 'path', 'setting_default': 'special://profile/addon_data/plugin.video.redlight/Premium Downloads/', 'browse_mode': '0'},
 {'setting_id': 'image_download_directory', 'setting_type': 'path', 'setting_default': 'special://profile/addon_data/plugin.video.redlight/Image Downloads/', 'browse_mode': '0'},
 {'setting_id': 'import_export_directory', 'setting_type': 'path', 'setting_default': 'special://profile/addon_data/plugin.video.redlight/Import Export/', 'browse_mode': '0'},
+#==================== Cloud Backup
+{'setting_id': 'cloud_backup.enabled', 'setting_type': 'boolean', 'setting_default': 'false'},
+{'setting_id': 'cloud_backup.token', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'cloud_backup.repository', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'cloud_backup.retention', 'setting_type': 'action', 'setting_default': '14', 'min_value': '1', 'max_value': '60'},
+{'setting_id': 'cloud_backup.interval_hours', 'setting_type': 'action', 'setting_default': '24', 'min_value': '1', 'max_value': '168'},
+{'setting_id': 'cloud_backup.last_run', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'cloud_backup.last_status', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'cloud_backup.last_error_notified', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 
 
 #================================================================================#

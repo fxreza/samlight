@@ -687,6 +687,61 @@
                           <property name="setting_description">Default folder for Tools > Import &amp; Export backups. Import and export file browsers open here. You can also save a new folder as the default when prompted after export. Folders inside Red Light's addon data stay as special:// (portable); other locations keep a normal device path</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_path&amp;setting_id=import_export_directory)</onclick>
                       </item>
+        <!-- Cloud Backup -->
+                      <item>
+                          <visible>Container(2000).HasFocus(10)</visible>
+                          <property name="setting_label">Cloud Backup</property>
+                          <property name="setting_type">separator</property>
+                          <onclick>noop</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10)</visible>
+                          <property name="setting_label">Daily Backup to GitHub</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.enabled)]</property>
+                          <property name="setting_description">Once a day, upload settings, menus, lists, favorites, watched status and resume points to a PRIVATE GitHub repository. The backup contains your account tokens and passwords, so the repository must be private. Runs in the background and skips playback</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=cloud_backup.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
+                          <property name="setting_label">    - GitHub Token</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.token)]</property>
+                          <property name="setting_description">A fine-grained personal access token. On GitHub: Settings > Developer settings > Personal access tokens > Fine-grained tokens. Grant it access to ONLY your backup repository, with Repository permissions > Contents set to Read and write</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_string&amp;setting_id=cloud_backup.token)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
+                          <property name="setting_label">    - Repository</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.repository)]</property>
+                          <property name="setting_description">Owner and name of the private repository, as owner/name - for example fxreza/samlight-backup. It must already contain at least one commit; a repository with no commits cannot hold a release</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_string&amp;setting_id=cloud_backup.repository)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
+                          <property name="setting_label">    - Backups to Keep</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.retention)]</property>
+                          <property name="setting_description">How many backups from this device to keep. Older ones are deleted after each successful upload. Backups made by other devices are never touched</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_numeric&amp;setting_id=cloud_backup.retention)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
+                          <property name="setting_label">    - Back Up Every (hours)</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.interval_hours)]</property>
+                          <property name="setting_description">Hours between backups. 24 is once a day. If the device is off or asleep when one is due, it runs shortly after the next start-up instead of being skipped</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_numeric&amp;setting_id=cloud_backup.interval_hours)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
+                          <property name="setting_label">    - Last Backup</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.last_status)]</property>
+                          <property name="setting_description">Result of the most recent backup. Select this row to run a backup right now</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=cloud_backup.run_now)</onclick>
+                      </item>
 <!-- FEATURES 20-->
         <!-- Extras -->
                       <item>

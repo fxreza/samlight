@@ -64,6 +64,24 @@ def mdblist_sync_interval():
 	except: interval = 60
 	return interval, interval * 60
 
+def cloud_backup_enabled():
+	return get_setting('redlight.cloud_backup.enabled', 'false') == 'true'
+
+def cloud_backup_repository():
+	value = get_setting('redlight.cloud_backup.repository', 'empty_setting') or ''
+	if value in ('empty_setting', ''): return None, None
+	owner, _sep, repo = value.strip().strip('/').partition('/')
+	return (owner.strip() or None), (repo.strip() or None)
+
+def cloud_backup_retention():
+	try: return max(1, int(get_setting('redlight.cloud_backup.retention', '14')))
+	except: return 14
+
+def cloud_backup_interval():
+	try: interval = max(1, int(get_setting('redlight.cloud_backup.interval_hours', '24')))
+	except: interval = 24
+	return interval, interval * 3600
+
 def simkl_sync_interval():
 	setting = get_setting('redlight.simkl.sync_interval', '60')
 	try: interval = max(5, int(setting))

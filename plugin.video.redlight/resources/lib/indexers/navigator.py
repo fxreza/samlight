@@ -506,6 +506,9 @@ class Navigator:
 		self.add({'mode': 'local_backup.export_data', 'isFolder': 'false'}, 'Export Red Light Favorites & History', 'folder')
 		self.add({'mode': 'kodi_favorites.import_favorites', 'isFolder': 'false'}, 'Import Kodi Favorites', 'favorites')
 		self.add({'mode': 'kodi_favorites.export_favorites', 'isFolder': 'false'}, 'Export Kodi Favorites', 'favorites')
+		from modules.cloud_backup import backup_status_line
+		self.add({'mode': 'cloud_backup.run_now', 'isFolder': 'false'}, 'Back Up to Cloud Now  [I](%s)[/I]' % backup_status_line(), 'settings')
+		self.add({'mode': 'cloud_backup.restore_latest', 'isFolder': 'false'}, 'Restore from Cloud', 'settings')
 		self.end_directory()
 
 	def maintenance(self):
