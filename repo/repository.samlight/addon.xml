@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="repository.samlight" name="[COLOR red]Samlight Repository[/COLOR]" version="1.0.0" provider-name="Sam">
+    <extension point="xbmc.addon.repository" name="Samlight">
+        <dir>
+            <info compressed="false">https://fxreza.github.io/samlight/addons.xml</info>
+            <checksum>https://fxreza.github.io/samlight/addons.xml.md5</checksum>
+            <datadir zip="true">https://fxreza.github.io/samlight/</datadir>
+        </dir>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <summary lang="en">[COLOR red]Samlight Repository[/COLOR]</summary>
+        <description lang="en">Personal Kodi repository. Hosts Sam Light, a private fork of Red Light by The Red Wizard, rebuilt automatically whenever upstream changes.</description>
+        <platform>all</platform>
+        <license>GPL-3.0</license>
+        <assets>
+            <icon>icon.png</icon>
+        </assets>
+    </extension>
+</addon>

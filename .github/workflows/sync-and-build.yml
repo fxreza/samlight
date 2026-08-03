@@ -1,0 +1,66 @@
+name: Sync upstream and build repo
+
+on:
+  schedule:
+    - cron: "17 5 * * *"   # daily, 05:17 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "plugin.video.redlight/**"
+      - "repo/**"
+      - "tools/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: samlight-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure git
+        run: |
+          git config user.name "samlight-bot"
+          git config user.email "actions@github.com"
+
+      - name: Sync pristine upstream snapshot
+        if: github.event_name != 'push'
+        run: python tools/sync_upstream.py
+
+      - name: Push snapshot branch
+        if: github.event_name != 'push'
+        run: git push origin upstream
+
+      - name: Merge upstream into main
+        if: github.event_name != 'push'
+        run: |
+          if ! git merge upstream --no-edit; then
+            git merge --abort
+            echo "::error::Upstream changed lines you also changed. Resolve locally: git checkout main && git merge upstream"
+            exit 1
+          fi
+
+      - name: Build repository
+        run: python tools/build.py
+
+      - name: Commit and push
+        run: |
+          git add -A docs
+          if git diff --cached --quiet && git diff --quiet HEAD; then
+            echo "Nothing to publish."
+            exit 0
+          fi
+          git commit -m "Rebuild repository [skip ci]" || true
+          git push origin main
