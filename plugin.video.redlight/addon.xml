@@ -21,7 +21,7 @@
         <license>GPL-3.0</license>
         <assets>
             <icon>resources/media/addon_icons/icon.png</icon>
-            <fanart>resources/media/fanart.jpg</fanart>
+            <fanart>resources/media/fanart.png</fanart>
         </assets>
         <news>[COLOR red]Check the Changelog in Tools > Changelog &amp; Log Utils[/COLOR]</news>
     </extension>

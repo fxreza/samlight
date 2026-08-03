@@ -268,7 +268,7 @@ def addon_icon_mini():
 def addon_fanart():
 	return (
 		get_property('redlight.addon_fanart')
-		or 'special://home/addons/plugin.video.redlight/resources/media/fanart.jpg'
+		or 'special://home/addons/plugin.video.redlight/resources/media/fanart.png'
 	)
 
 MEDIA_GITHUB_USER = 'The-Red-Wizard'

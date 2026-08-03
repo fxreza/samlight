@@ -19,7 +19,8 @@ class FavoritesCache:
 
 	def get_favorites(self, media_type):
 		dbcon = connect_database('favorites_db')
-		favorites = dbcon.execute('SELECT tmdb_id, title FROM favourites WHERE db_type=?', (media_type,)).fetchall()
+		# No date column exists, but rowid increments on insert, so DESC is newest added first.
+		favorites = dbcon.execute('SELECT tmdb_id, title FROM favourites WHERE db_type=? ORDER BY rowid DESC', (media_type,)).fetchall()
 		return [{'tmdb_id': str(i[0]), 'title': str(i[1])} for i in favorites]
 
 	def clear_favorites(self, media_type):

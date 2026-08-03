@@ -192,7 +192,9 @@ def get_personal_list(params):
 	# so one with no override now is one nobody has ever chosen a sort for, and the engine's own
 	# default (title:asc) is the right answer. A 'default:asc' fallback would read as "Provider
 	# Default" for a provider that does not exist.
-	return list_sort.sort_source(contents, 'personal:%s|%s' % (list_name, author), None, 'personal')
+	# Fork: default to newest added first instead of title:asc. Every item already carries a
+	# date_added stamp and the personal adapter already sorts on it; a per-list override still wins.
+	return list_sort.sort_source(contents, 'personal:%s|%s' % (list_name, author), None, 'personal', fallback='date_added:desc')
 
 def make_new_personal_list(params):
 	is_retry, external_creation = params.get('is_retry', False), params.get('external_creation', 'false') == 'true'
