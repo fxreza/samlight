@@ -129,6 +129,22 @@ def make_zip(addon_id, version, files):
     return path
 
 
+def publish_assets(addon_id, files):
+    """Copy the addon's declared <assets> next to its zip.
+
+    Kodi resolves repository artwork from <datadir>/<addon id>/<asset path>, not from inside
+    the zip - without this the browse list shows a blank icon until the addon is installed.
+    """
+    text = files["addon.xml"].decode("utf-8")
+    block = re.search(r"<assets>(.*?)</assets>", text, re.S)
+    if not block:
+        return
+    for rel in re.findall(r"<[a-z]+>([^<]+)</[a-z]+>", block.group(1)):
+        rel = rel.strip().replace("\\", "/")
+        if rel in files:
+            write(os.path.join(DOCS, addon_id, rel.replace("/", os.sep)), files[rel])
+
+
 def prune(addon_id, keep_name):
     d = os.path.join(DOCS, addon_id)
     zips = sorted(
@@ -175,6 +191,8 @@ def main():
         state[config.TARGET_ID] = {"version": version, "hash": digest, "upstream": base}
     else:
         print(f"{config.TARGET_ID}: unchanged, staying at {version}")
+    # Unconditional: artwork must exist beside the zip even on a rebuild that changed nothing.
+    publish_assets(config.TARGET_ID, files)
     addon_xmls.append(files["addon.xml"].decode("utf-8"))
 
     # --- the repository addon ----------------------------------------------
@@ -194,6 +212,7 @@ def main():
         prune(config.REPO_ADDON_ID, f"{config.REPO_ADDON_ID}-{repo_version}.zip")
         state[config.REPO_ADDON_ID] = {"version": repo_version, "hash": repo_digest}
         built = True
+    publish_assets(config.REPO_ADDON_ID, repo_files)
     addon_xmls.append(repo_files["addon.xml"].decode("utf-8"))
 
     # --- index Kodi reads ---------------------------------------------------

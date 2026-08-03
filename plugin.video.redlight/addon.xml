@@ -10,7 +10,7 @@
     <extension point="xbmc.service" library="resources/lib/service.py"/>
     <extension point="xbmc.python.module" library="resources/lib/"/>
     <extension point="xbmc.addon.metadata">
-        <reuselanguageinvoker>true</reuselanguageinvoker>
+        <reuselanguageinvoker>false</reuselanguageinvoker>
         <summary lang="en">[COLOR red]The Red Light[/COLOR]</summary>
         <description lang="en">[COLOR red]* AllDebrid, Offcloud, Premiumize, Real Debrid and TorBox
 * AIOStreams
