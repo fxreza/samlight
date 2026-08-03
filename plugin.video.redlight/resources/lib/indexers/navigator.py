@@ -538,6 +538,7 @@ class Navigator:
 		self.add({'mode': 'clear_cache', 'cache': 'pm_cloud', 'isFolder': 'false'}, 'Clear Premiumize Cache', 'settings')
 		self.add({'mode': 'clear_cache', 'cache': 'rd_cloud', 'isFolder': 'false'}, 'Clear Real Debrid Cache', 'settings')
 		self.add({'mode': 'clear_cache', 'cache': 'tb_cloud', 'isFolder': 'false'}, 'Clear TorBox Cache', 'settings')
+		self.add({'mode': 'refresh_artwork_choice', 'isFolder': 'false'}, 'Refresh Addon Artwork (icons, fanart)', 'settings')
 		self.end_directory()
 
 	def set_view_modes(self):

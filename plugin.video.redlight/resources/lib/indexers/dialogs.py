@@ -109,6 +109,32 @@ def addon_icon_choice(params):
 	kodi_utils.set_property('redlight.addon_icon_mini', os.path.join(kodi_utils.addon_info('path'), 'resources', 'media', 'addon_icons', 'minis', new_icon))
 	kodi_utils.update_local_addons()
 
+def refresh_artwork_choice(params):
+	# Kodi caches images by path in Textures13.db, so replacing an icon or the fanart in place
+	# keeps showing the old picture until the cached copy is evicted. Only touches rows belonging
+	# to this addon.
+	import os
+	import sqlite3 as database
+	db_path = kodi_utils.translate_path('special://database/Textures13.db')
+	if not os.path.exists(db_path):
+		return kodi_utils.ok_dialog(heading='Refresh Artwork', text='Kodi texture cache not found.')
+	thumbs = kodi_utils.translate_path('special://thumbnails')
+	removed = 0
+	try:
+		dbcon = database.connect(db_path, isolation_level=None, timeout=40.0)
+		rows = dbcon.execute("SELECT id, cachedurl FROM texture WHERE url LIKE ?", ('%plugin.video.redlight%',)).fetchall()
+		for image_id, cachedurl in rows:
+			try: os.remove(os.path.join(thumbs, cachedurl))
+			except: pass
+			dbcon.execute('DELETE FROM texture WHERE id=?', (image_id,))
+			dbcon.execute('DELETE FROM sizes WHERE idtexture=?', (image_id,))
+			removed += 1
+		dbcon.close()
+	except Exception as e:
+		return kodi_utils.ok_dialog(heading='Refresh Artwork', text='Could not clear the cache.[CR][CR]%s' % e)
+	return kodi_utils.ok_dialog(heading='Refresh Artwork',
+		text='Cleared %s cached image(s).[CR][CR]Restart Kodi to see the new artwork.' % removed)
+
 def rescrape_actions_choice(params):
 	set_focus = params.get('set_focus', 0)
 	action_values = {0: 'Off', 1: 'Auto', 2: 'Prompt'}
