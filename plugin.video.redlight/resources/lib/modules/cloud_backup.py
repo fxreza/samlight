@@ -192,6 +192,25 @@ def run_now(params):
 	return kodi_utils.ok_dialog(heading='Cloud Backup failed', text=message, scroll=True)
 
 
+_MONTHS = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+
+
+def _asset_label(asset):
+	"""samlight-firestick-20260803-051700.zip -> 'firestick   3 Aug 2026 05:17   2.4 MB'"""
+	name = asset.get('name', '')
+	size = '%.1f MB' % (asset.get('size', 0) / 1048576.0)
+	match = re.match(r'samlight-(.+)-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}\.zip$', name)
+	if match:
+		device, year, month, day, hour, minute = match.groups()
+		try: month_name = _MONTHS[int(month) - 1]
+		except: month_name = month
+		when = '%s %s %s %s:%s' % (int(day), month_name, year, hour, minute)
+	else:
+		device, when = name, (asset.get('created_at') or '')[:10]
+	if name.startswith(_device_prefix()): device = '%s [I](this device)[/I]' % device
+	return '%s   -   %s   -   %s' % (device, when, size)
+
+
 def _verify_zip_databases(zip_path, inventory):
 	"""Check every database in the zip before letting it near the live profile."""
 	scratch = kodi_utils.translate_path(VERIFY_DIR)
@@ -229,16 +248,16 @@ def restore_latest(params):
 		return kodi_utils.ok_dialog(heading='Restore from Cloud', text='Stop playback first.')
 	ok, release = gh.resolve_or_create_release(cfg, create=False)
 	if not ok: return kodi_utils.ok_dialog(heading='Restore from Cloud', text=release['message'], scroll=True)
-	ok, asset = gh.newest_asset(cfg, release, _device_prefix())
-	if not ok:
-		# Fall back to any device's backup - moving to a new stick is exactly when this is needed.
-		ok, asset = gh.newest_asset(cfg, release)
-		if not ok: return kodi_utils.ok_dialog(heading='Restore from Cloud', text=asset['message'], scroll=True)
-	size = '%.1f MB' % (asset.get('size', 0) / 1048576.0)
-	text = '[B]%s[/B][CR]%s, uploaded %s[CR][CR]Download this backup?' % (
-		asset.get('name', ''), size, (asset.get('created_at') or '')[:10])
-	if not kodi_utils.confirm_dialog(heading='Restore from Cloud', text=text, ok_label='Download', cancel_label='Cancel'):
-		return
+	ok, assets = gh.list_assets(cfg, release)
+	if not ok: return kodi_utils.ok_dialog(heading='Restore from Cloud', text=assets['message'], scroll=True)
+	# Every device's backups, newest first, so the highlighted entry is today's.
+	backups = sorted([a for a in assets if a.get('name', '').endswith('.zip')],
+						key=lambda a: a.get('created_at', ''), reverse=True)
+	if not backups:
+		return kodi_utils.ok_dialog(heading='Restore from Cloud', text='That repository has no backups yet.')
+	list_items = [{'line1': _asset_label(a)} for a in backups]
+	asset = kodi_utils.select_dialog(backups, items=json.dumps(list_items), heading='Choose a Backup to Restore')
+	if asset == None: return
 	path = kodi_utils.translate_path(RESTORE_PATH)
 	kodi_utils.notification('Downloading backup', 4000)
 	ok, result = gh.download_asset(cfg, asset, path)

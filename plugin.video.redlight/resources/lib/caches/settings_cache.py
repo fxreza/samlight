@@ -1141,7 +1141,7 @@ def default_settings():
 #==================== Cloud Backup
 {'setting_id': 'cloud_backup.enabled', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'cloud_backup.token', 'setting_type': 'string', 'setting_default': 'empty_setting'},
-{'setting_id': 'cloud_backup.repository', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'cloud_backup.repository', 'setting_type': 'string', 'setting_default': 'fxreza/samlight-backup'},
 {'setting_id': 'cloud_backup.retention', 'setting_type': 'action', 'setting_default': '14', 'min_value': '1', 'max_value': '60'},
 {'setting_id': 'cloud_backup.interval_hours', 'setting_type': 'action', 'setting_default': '24', 'min_value': '1', 'max_value': '168'},
 {'setting_id': 'cloud_backup.last_run', 'setting_type': 'string', 'setting_default': 'empty_setting'},
