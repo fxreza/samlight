@@ -17,14 +17,17 @@ def random_valid_type_check():
 	return {'build_movie_list': 'movie', 'build_tvshow_list': 'tvshow', 'build_season_list': 'season', 'build_episode_list': 'episode',
 	'build_in_progress_episode': 'single_episode', 'build_recently_watched_episode': 'single_episode', 'build_next_episode': 'single_episode',
 	'build_my_calendar': 'single_episode', 'build_mdbl_calendar': 'single_episode', 'build_punchplay_calendar': 'single_episode',
+	'build_simkl_calendar': 'single_episode',
 	'build_mdbl_next_up': 'single_episode', 'build_trakt_lists': 'trakt_list',
 	'trakt.list.build_trakt_list': 'trakt_list', 'build_trakt_lists_contents': 'trakt_list', 'personal_lists.build_personal_list': 'personal_list',
-	'build_personal_lists_contents': 'personal_list', 'tmdblist.build_tmdb_list': 'tmdb_list', 'build_tmdb_lists_contents': 'tmdb_list'}
+	'build_personal_lists_contents': 'personal_list', 'tmdblist.build_tmdb_list': 'tmdb_list', 'build_tmdb_lists_contents': 'tmdb_list',
+	'mdblist.build_mdbl_list': 'mdblist_list', 'build_mdblist_lists_contents': 'mdblist_list'}
 
 def random_episodes_check():
 	return {'build_in_progress_episode': 'episode.progress', 'build_recently_watched_episode': 'episode.recently_watched',
 	'build_next_episode': 'episode.next', 'build_my_calendar': 'episode.trakt', 'build_mdbl_calendar': 'episode.mdblist',
-	'build_mdbl_next_up': 'episode.mdblist_next', 'build_punchplay_calendar': 'episode.punchplay'}
+	'build_mdbl_next_up': 'episode.mdblist_next', 'build_punchplay_calendar': 'episode.punchplay',
+	'build_simkl_calendar': 'episode.simkl'}
 
 def extras_button_label_values():
 	return {'movie':
@@ -351,7 +354,9 @@ def set_browse_exit_params(list_mode='tvshow', action=None):
 
 def browse_list_exit_params(list_mode='tvshow', action=None):
 	folder_path = get_infolabel('Container.FolderPath')
-	parent_tokens = ('navigator.', 'mdblist.', 'punchplay.', 'simkl.', 'trakt.list', 'tmdblist.', 'personal_lists.', 'build_tmdb_lists_contents')
+	parent_tokens = (
+		'navigator.', 'mdblist.', 'punchplay.', 'simkl.', 'trakt.list', 'tmdblist.', 'personal_lists.',
+		'build_tmdb_lists_contents', 'build_mdblist_lists_contents')
 	if any(token in folder_path for token in parent_tokens):
 		return sanitize_folder_url(folder_path)
 	if action:
@@ -380,12 +385,20 @@ def list_collection_exit_params(params=None):
 		return build_folder_url({'mode': 'tmdblist.get_tmdb_lists'})
 	if mode in ('personal_lists.build_personal_list', 'random.build_personal_lists_contents'):
 		return build_folder_url({'mode': 'personal_lists.get_personal_lists'})
+	if mode in ('mdblist.build_mdbl_list', 'random.build_mdblist_lists_contents'):
+		list_type = params.get('list_type', 'my_lists')
+		if list_type == 'liked_lists':
+			return build_folder_url({'mode': 'mdblist.get_mdbl_liked_lists', 'name': 'Liked Lists'})
+		if list_type == 'user_lists':
+			return build_folder_url({'mode': 'mdblist.get_mdbl_top_lists', 'name': 'Popular MDBLists'})
+		return build_folder_url({'mode': 'mdblist.get_mdbl_lists', 'name': 'My Lists'})
 	return sanitize_folder_url(folder_path)
 
 _browse_action_exit_params = {
 	'mdblist_watchlist': {'mode': 'navigator.mdblist_watchlists'},
 	'mdblist_collection': {'mode': 'navigator.mdblist_library'},
 	'mdblist_droplist': {'mode': 'navigator.mdblist_lists'},
+	'trakt_droplist': {'mode': 'navigator.trakt_lists_personal'},
 	'trakt_collection': {'mode': 'navigator.trakt_collections'},
 	'trakt_collection_lists': {'mode': 'navigator.trakt_collections'},
 	'trakt_watchlist': {'mode': 'navigator.trakt_watchlists'},
@@ -1141,12 +1154,16 @@ def show_text(heading, text=None, file=None, font_size='small', kodi_log=False):
 		confirm = confirm_dialog(text='Show Log Errors Only?', ok_label='Yes', cancel_label='No')
 		if confirm == None: return
 		if confirm: text = [i for i in text if any(x in i.lower() for x in ('exception', 'error', '[test]'))]
-	if isinstance(text, str): text = text.splitlines()
+	if isinstance(text, str):
+		# Callers often use Kodi [CR] as a line break (e.g. Clean Databases). Treat like \n
+		# before wrap — otherwise one giant line hard-splits mid-[COLOR]/[B] and shows orphan tags.
+		text = text.replace('[CR]', '\n').splitlines()
 	# List labels do not wrap; overflow becomes "...". Wrap by estimated pixel width for
 	# Estuary NotoSans (font14/33 large, font12/25 small). Label is 1214px; keep a small
 	# margin so dense/proportional lines are not truncated mid-word.
 	bbcode_re = re.compile(r'\[/?[^\[\]]+\]')
 	# Keep spaces inside [B]/[I]/[COLOR] spans so wrap cannot split e.g. [I]Original Air Date[/I].
+	# COLOR tags may be "[COLOR green]" or "[COLOR=green]" / "[COLOR ff00ff00]".
 	bbcode_span_re = re.compile(
 		r'\[(B|I|LIGHT|UPPERCASE|LOWERCASE|CAPITALIZE)\](?:(?!\[/\1\]).)*\[/\1\]'
 		r'|\[COLOR(?:\s|=)[^\]]+\].*?\[/COLOR\]',
@@ -1218,10 +1235,20 @@ def show_text(heading, text=None, file=None, font_size='small', kodi_log=False):
 				current = word
 				while _text_width(current) > width:
 					# Hard-split oversized tokens (URLs, long unbroken strings).
+					# Never cut inside a [...] BBCode tag — that yields orphan "[COLOR green]" lines.
 					cut, idx = current, 1
 					while idx < len(cut) and _text_width(cut[:idx]) <= width:
 						idx += 1
 					idx = max(1, idx - 1)
+					open_bracket = cut.rfind('[', 0, idx)
+					close_bracket = cut.rfind(']', 0, idx)
+					if open_bracket > close_bracket:
+						# Mid-tag: finish the tag if present, else back up before '['.
+						tag_end = cut.find(']', open_bracket)
+						if tag_end != -1 and _text_width(cut[:tag_end + 1]) <= width:
+							idx = tag_end + 1
+						elif open_bracket > 0:
+							idx = open_bracket
 					parts.append(cut[:idx])
 					current = cut[idx:]
 			else:
