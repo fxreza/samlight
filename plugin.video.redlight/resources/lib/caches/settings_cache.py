@@ -23,7 +23,7 @@ _SERVICE_AUTH_VISIBILITY_SETTINGS = frozenset((
 ))
 # Meta account auth — Home props drive Meta Accounts sync-row visibility while Settings stays open.
 _META_AUTH_VISIBILITY_SETTINGS = frozenset((
-	'trakt.user', 'trakt.token', 'simkl.user', 'simkl.token',
+	'trakt.user', 'trakt.token', 'simkl.user', 'simkl.token', 'simkl.client',
 	'mdblist.user', 'mdblist.token',
 	'punchplay.user', 'punchplay.token', 'punchplay.client',
 	'wetrakr.user', 'wetrakr.token',
@@ -602,7 +602,7 @@ def run_deferred_setup_background_if_needed():
 _DIRECTORY_LISTING_MODES = frozenset((
 	'build_movie_list', 'build_tvshow_list', 'build_season_list', 'build_episode_list',
 	'build_in_progress_episode', 'build_recently_watched_episode', 'build_next_episode',
-	'build_my_calendar', 'build_mdbl_calendar', 'build_punchplay_calendar', 'build_mdbl_next_up', 'build_next_episode_manager'))
+	'build_my_calendar', 'build_mdbl_calendar', 'build_punchplay_calendar', 'build_simkl_calendar', 'build_mdbl_next_up', 'build_next_episode_manager'))
 
 # The five settings the unified-list-sort migration reads. They are no longer in default_settings(),
 # so the obsolete-id purge in sync_settings() would delete them on the same pass that migrates them -
@@ -1112,6 +1112,7 @@ def default_settings():
 {'setting_id': 'punchplay.refresh_widgets', 'setting_type': 'boolean', 'setting_default': 'true'},
 #======+============= Simkl Cache
 {'setting_id': 'simkl.user', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'simkl.client', 'setting_type': 'string', 'setting_default': '6cacc8db22e67b2cd423ef73a9fd3a4f45146ba7fbf30fb2ae28f2fa9d0c2583'},
 {'setting_id': 'simkl.token', 'setting_type': 'string', 'setting_default': '0'},
 {'setting_id': 'simkl.sync_interval', 'setting_type': 'action', 'setting_default': '60', 'min_value': '5', 'max_value': '600'},
 {'setting_id': 'simkl.refresh_widgets', 'setting_type': 'boolean', 'setting_default': 'true'},
@@ -1230,6 +1231,7 @@ def default_settings():
 {'setting_id': 'single_ep_display', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'TITLE - SxE. EPISODE', '1': 'SxE. EPISODE', '2': 'EPISODE'}},
 {'setting_id': 'single_ep_display_widget', 'setting_type': 'action', 'setting_default': '1', 'settings_options': {'0': 'TITLE - SxE. EPISODE', '1': 'SxE. EPISODE', '2': 'EPISODE'}},
 {'setting_id': 'single_ep_unwatched_episodes', 'setting_type': 'boolean', 'setting_default': 'false'},
+{'setting_id': 'single_ep_unwatched_in_title', 'setting_type': 'boolean', 'setting_default': 'false'},
 #==================== Next Episodes
 {'setting_id': 'nextep.method', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Last Aired', '1': 'Last Watched'}},
 {'setting_id': 'nextep.sort_type', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Recently Watched', '1': 'Airdate', '2': 'Title'}},
@@ -1240,7 +1242,7 @@ def default_settings():
 {'setting_id': 'nextep.include_airdate', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'nextep.airing_today', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'nextep.include_unaired', 'setting_type': 'boolean', 'setting_default': 'false'},
-#======+============= Calendars (Trakt + MDBList + PunchPlay — shared episode-list UI)
+#======+============= Calendars (MDBList + PunchPlay + Simkl + Trakt — shared episode-list UI)
 {'setting_id': 'trakt.flatten_episodes', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'trakt.calendar_display', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'TITLE - SxE. EPISODE', '1': 'SxE. EPISODE', '2': 'EPISODE'}},
 {'setting_id': 'trakt.calendar_display_widget', 'setting_type': 'action', 'setting_default': '1', 'settings_options': {'0': 'TITLE - SxE. EPISODE', '1': 'SxE. EPISODE', '2': 'EPISODE'}},
@@ -1459,6 +1461,7 @@ def default_settings():
 {'setting_id': 'rescrape.full_scrape.order', 'setting_type': 'action', 'setting_default': '5', 'min_value': '1', 'max_value': '5'},
 #==================== Sorting and Filtering
 {'setting_id': 'results.sort_order_display', 'setting_type': 'string', 'setting_default': 'Quality, Size, Provider'},
+{'setting_id': 'results.quality_sort_order', 'setting_type': 'string', 'setting_default': '4K, 1080p, 720p, SD'},
 {'setting_id': 'results.filter_size_method', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Off', '1': 'Use Line Speed', '2': 'Use Size'}},
 {'setting_id': 'results.line_speed', 'setting_type': 'action', 'setting_default': '25', 'min_value': '1'},
 {'setting_id': 'results.movie_size_max', 'setting_type': 'action', 'setting_default': '10000', 'min_value': '1'},

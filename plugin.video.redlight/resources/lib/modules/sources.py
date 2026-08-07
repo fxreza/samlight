@@ -354,6 +354,19 @@ class Sources():
 		self.nextep_settings, self.disable_autoplay_next_episode = params_get('nextep_settings', {}), params_get('disable_autoplay_next_episode', 'false') == 'true'
 		if getattr(self, '_nextep_stash_settings', None):
 			self.nextep_settings = self._nextep_stash_settings
+		self.num_episodes = params_get('num_episodes', None)
+		if not self.num_episodes and isinstance(self.nextep_settings, dict):
+			self.num_episodes = self.nextep_settings.get('num_episodes')
+		# Play # Episodes: force Autoplay Next for the remaining chain; stop after the last.
+		try: _play_n = int(self.num_episodes) if self.num_episodes not in (None, '') else 0
+		except: _play_n = 0
+		if _play_n > 1:
+			self.autoplay_nextep, self.autoscrape_nextep = True, False
+			self.autoscrape = False
+			if not self.play_type: self.play_type = 'autoplay_nextep'
+		elif self.num_episodes not in (None, '') and _play_n <= 1:
+			self.autoplay_nextep, self.autoscrape_nextep = False, False
+			self.autoscrape = False
 		self.disabled_ext_ignored = params_get('disabled_ext_ignored', self.disabled_ext_ignored) == 'true'
 		self.folders_ignore_filters = get_setting('redlight.results.folders_ignore_filters', 'false') == 'true'
 		self.filter_size_method = int(get_setting('redlight.results.filter_size_method', '0'))
@@ -382,6 +395,7 @@ class Sources():
 		self.limit_resolve = settings.limit_resolve()
 		self.weight_size = settings.size_sort_weighted()
 		self.sort_function, self.quality_filter = settings.results_sort_order(), self._quality_filter()
+		self.quality_sort_order = settings.quality_sort_order()
 		self.include_unknown_size = get_setting('redlight.results.size_unknown', 'false') == 'true'
 		self.make_search_info()
 		if self.background and self.play_type in ('autoplay_nextep', 'autoscrape_nextep', 'random_continual'):
@@ -393,8 +407,9 @@ class Sources():
 		# Continual Random no-results skips must not run Still Watching — unsuccessful scrapes
 		# must not burn the binge budget (Dateline / #62).
 		continual_skip = self.play_type == 'random_continual' and params_get('continual_skip', 'false') == 'true'
+		play_n_episodes = bool(self.num_episodes) or bool(isinstance(self.nextep_settings, dict) and self.nextep_settings.get('play_n_episodes'))
 		if self.background and (self.autoplay_nextep or self.play_type == 'random_continual') and self.nextep_settings \
-				and not getattr(self, '_nextep_alert_handled', False) and not continual_skip:
+				and not getattr(self, '_nextep_alert_handled', False) and not continual_skip and not play_n_episodes:
 			if not self.still_watching_check():
 				self._decline_nextep_prep('still watching')
 				kodi_utils.notification('Cancel Autoplay', icon=self.meta.get('poster'))
@@ -597,7 +612,8 @@ class Sources():
 		results = self.sort_results(results)
 		min_seeders = settings.uncached_min_seeders()
 		all_uncached_results = [i for i in results if 'Uncached' in i.get('cache_provider', '')]
-		self.uncached_results = [i for i in all_uncached_results if int(i.get('seeders', '0')) >= min_seeders]
+		# seeders can be present but None (external scrapers); .get default only covers missing keys
+		self.uncached_results = [i for i in all_uncached_results if int(i.get('seeders') or 0) >= min_seeders]
 		uncached_in_main = []
 		if settings.include_uncached_torbox():
 			uncached_in_main.extend([i for i in self.uncached_results if 'TorBox' in i.get('cache_provider', '')])
@@ -721,8 +737,10 @@ class Sources():
 	def special_filter(self, results, file_type):
 		enable_setting, key = settings.filter_status(file_type), self.filter_keys[file_type]
 		if key == 'HEVC' and enable_setting == 0:
-			hevc_max_quality = self._get_quality_rank(get_setting('redlight.filter.hevc.%s' % ('max_autoplay_quality' if self.autoplay else 'max_quality'), '4K'))
-			results = [i for i in results if not self._extra_info_has_tag(i['extraInfo'], key) or i['quality_rank'] >= hevc_max_quality]
+			# Absolute resolution order (not user Quality Sort Order) — "max" means exclude higher res HEVC
+			hevc_max_quality = self._get_absolute_quality_rank(get_setting('redlight.filter.hevc.%s' % ('max_autoplay_quality' if self.autoplay else 'max_quality'), '4K'))
+			results = [i for i in results if not self._extra_info_has_tag(i['extraInfo'], key)
+				or self._get_absolute_quality_rank(i.get('quality', 'SD')) >= hevc_max_quality]
 		if enable_setting == 1:
 			if key in ('D/VISION', 'HDR'):
 				if not settings.filter_status({'D/VISION': 'hdr', 'HDR': 'dv'}[key]) == 0: results = [i for i in results if not self._extra_info_has_tag(i['extraInfo'], key)]
@@ -1577,8 +1595,15 @@ class Sources():
 		if self.weight_size: return item['size'] * 2 if 'HEVC' in item['extraInfo'] else item['size']
 		else: return item['size']
 
+	def _get_absolute_quality_rank(self, quality):
+		return {'4K': 1, '1080p': 2, '720p': 3, 'SD': 4, 'SCR': 5, 'CAM': 5, 'TELE': 5}.get(quality, 5)
+
 	def _get_quality_rank(self, quality):
-		return {'4K': 1, '1080p': 2, '720p': 3, 'SD': 4, 'SCR': 5, 'CAM': 5, 'TELE': 5}[quality]
+		'''Sort key from Quality Sort Order (1 = first). Prerelease always after SD/configured qualities.'''
+		order = getattr(self, 'quality_sort_order', None) or settings.quality_sort_order()
+		if quality in ('SCR', 'CAM', 'TELE'): return len(order) + 1
+		try: return order.index(quality) + 1
+		except ValueError: return len(order) + 1
 
 	def _get_provider_rank(self, account_type):
 		rank = self.provider_sort_ranks.get(account_type)

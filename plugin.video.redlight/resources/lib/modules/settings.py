@@ -12,6 +12,10 @@ def tmdb_lists_read_token():
 def trakt_client():
 	return get_setting('redlight.trakt.client', '')
 
+def simkl_client():
+	"""Simkl Client ID from Meta Accounts; empty falls back to the shipped default in simkl_api."""
+	return (get_setting('redlight.simkl.client', '') or '').strip()
+
 def mdblist_client():
 	return get_setting('redlight.mdblist.client', '')
 
@@ -194,6 +198,14 @@ def page_limit(is_home):
 
 def quality_filter(setting):
 	return get_setting('redlight.%s' % setting).split(', ')
+
+def quality_sort_order():
+	'''User order for Results Sorting when Quality is a key. Lower index = higher in list.'''
+	default = ['4K', '1080p', '720p', 'SD']
+	raw = get_setting('redlight.results.quality_sort_order', '4K, 1080p, 720p, SD')
+	parts = [i.strip() for i in (raw or '').split(',') if i.strip()]
+	if sorted(parts) != sorted(default): return default[:]
+	return parts
 
 def sort_to_top_filter(autoplay):
 	return {0: False, 1: False if autoplay else True, 2: True if autoplay else False, 3: True}[int(get_setting('redlight.filter.sort_to_top', '0'))]
@@ -492,6 +504,10 @@ def exclude_specials_from_progress():
 
 def single_ep_unwatched_episodes():
 	return get_setting('redlight.single_ep_unwatched_episodes', 'false') == 'true'
+
+def single_ep_unwatched_in_title():
+	# Nested under Provide Unwatched Episodes Info — both must be on.
+	return single_ep_unwatched_episodes() and get_setting('redlight.single_ep_unwatched_in_title', 'false') == 'true'
 
 def single_ep_display_format(is_external):
 	if is_external: setting, default = 'redlight.single_ep_display_widget', '1'
@@ -1000,7 +1016,7 @@ def calendar_sort_order():
 	return int(get_setting('redlight.trakt.calendar_sort_order', '0'))
 
 def calendar_day_window():
-	'''Inclusive start/end dates for Trakt, MDBList, and PunchPlay calendars (Show Previous/Future Days).'''
+	'''Inclusive start/end dates for MDBList, PunchPlay, Simkl, and Trakt calendars (Show Previous/Future Days).'''
 	from datetime import timedelta
 	from modules.utils import get_datetime
 	try: previous_days = int(get_setting('redlight.trakt.calendar_previous_days', '7'))
