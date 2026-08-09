@@ -324,11 +324,11 @@ class Movies:
 			info_tag.setWriters(meta_get('writer')), info_tag.setDirectors(meta_get('director'))
 			cast = meta_get('short_cast', []) or meta_get('cast', []) or []
 			info_tag.setCast([self.kodi_actor(name=item['name'], role=item['role'], thumbnail=item['thumbnail']) for item in cast])
+			watched_status.clear_listitem_kodi_resume(info_tag)
+			try: listitem.setContentLookup(False)
+			except: pass
 			if progress:
-				# Time only — total would make Kodi/skins show a resume dialog we cannot honour.
-				resume_secs = watched_status.get_resume_seconds(progress, duration)
-				info_tag.setResumePoint(resume_secs)
-				set_properties({'WatchedProgress': progress})
+				watched_status.apply_listitem_progress(info_tag, set_properties, progress, duration, self.is_external)
 			listitem.setLabel(title)
 			listitem.addContextMenuItems(cm)
 			listitem.setArt({'poster': poster, 'fanart': fanart, 'icon': poster, 'clearlogo': clearlogo, 'landscape': landscape, 'thumb': thumb})

@@ -17,7 +17,7 @@ def random_valid_type_check():
 	return {'build_movie_list': 'movie', 'build_tvshow_list': 'tvshow', 'build_season_list': 'season', 'build_episode_list': 'episode',
 	'build_in_progress_episode': 'single_episode', 'build_recently_watched_episode': 'single_episode', 'build_next_episode': 'single_episode',
 	'build_my_calendar': 'single_episode', 'build_mdbl_calendar': 'single_episode', 'build_punchplay_calendar': 'single_episode',
-	'build_simkl_calendar': 'single_episode',
+	'build_simkl_calendar': 'single_episode', 'build_simkl_public_calendar': 'single_episode',
 	'build_mdbl_next_up': 'single_episode', 'build_trakt_lists': 'trakt_list',
 	'trakt.list.build_trakt_list': 'trakt_list', 'build_trakt_lists_contents': 'trakt_list', 'personal_lists.build_personal_list': 'personal_list',
 	'build_personal_lists_contents': 'personal_list', 'tmdblist.build_tmdb_list': 'tmdb_list', 'build_tmdb_lists_contents': 'tmdb_list',
@@ -27,7 +27,7 @@ def random_episodes_check():
 	return {'build_in_progress_episode': 'episode.progress', 'build_recently_watched_episode': 'episode.recently_watched',
 	'build_next_episode': 'episode.next', 'build_my_calendar': 'episode.trakt', 'build_mdbl_calendar': 'episode.mdblist',
 	'build_mdbl_next_up': 'episode.mdblist_next', 'build_punchplay_calendar': 'episode.punchplay',
-	'build_simkl_calendar': 'episode.simkl'}
+	'build_simkl_calendar': 'episode.simkl', 'build_simkl_public_calendar': 'episode.simkl_public'}
 
 def extras_button_label_values():
 	return {'movie':
@@ -692,7 +692,32 @@ def kodi_version():
 	return int(get_infolabel('System.BuildVersion')[0:2])
 
 def get_video_database_path():
-	return translate_path('special://profile/Database/MyVideos%s.db' % {19: '119', 20: '121', 21: '124'}[kodi_version()])
+	"""Resolve the live MyVideos DB under the user profile.
+
+	Prefer the newest non-empty MyVideos*.db on disk (matches Kodi's
+	'Running database version MyVideosNNN' log line). Version-number fallbacks
+	are only used if that scan fails — see kodi.wiki/view/Databases.
+	"""
+	import os
+	db_dir = translate_path('special://profile/Database')
+	try:
+		candidates = []
+		for name in os.listdir(db_dir):
+			if not (name.startswith('MyVideos') and name.endswith('.db')): continue
+			path = os.path.join(db_dir, name)
+			try:
+				if os.path.getsize(path) <= 0: continue
+			except Exception:
+				continue
+			candidates.append(path)
+		if candidates:
+			return max(candidates, key=lambda p: (os.path.getmtime(p), os.path.getsize(p)))
+	except Exception:
+		pass
+	# Fallback if the profile Database folder is empty/unreadable.
+	# https://kodi.wiki/view/Databases — v21 Omega = 131, v22 Piers = 146 (subject to change).
+	ver = {19: '119', 20: '121', 21: '131', 22: '146'}.get(kodi_version(), '146')
+	return translate_path('special://profile/Database/MyVideos%s.db' % ver)
 
 def show_busy_dialog():
 	return execute_builtin('ActivateWindow(busydialognocancel)')

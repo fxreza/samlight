@@ -65,6 +65,10 @@ class RedLightPlayer(xbmc.Player):
 			self.cancel_all_playback = True
 			self.sources_object.cancel_all_playback = True
 			self.sources_object._resolve_user_cancelled = True
+			try:
+				self.sources_object._abort_plugin_resolve()
+			except Exception:
+				pass
 			return
 		ku.volume_checker()
 		ku.set_property(PROP_PLAY_OPENING, 'true')
@@ -109,6 +113,10 @@ class RedLightPlayer(xbmc.Player):
 				if cancelled:
 					if not self.sources_object._resolve_user_cancelled:
 						self.kill_dialog()
+					try:
+						self.sources_object._abort_plugin_resolve()
+					except Exception:
+						pass
 				else:
 					# Keep the resolver progress UI so play_file can try the next queued source.
 					self.run_error()
@@ -411,6 +419,12 @@ class RedLightPlayer(xbmc.Player):
 			if not autoplay_stash_scheduled:
 				ku.hide_busy_dialog()
 			if not playback_superseded and not self.media_marked: self.media_watched_marker()
+			# Wipe Kodi MyVideos bookmarks for plugin:// paths so the next home-widget
+			# click does not show Resume/Start over before scrape (Umbrella pattern).
+			try:
+				from modules.watched_status import clear_local_bookmarks
+				clear_local_bookmarks()
+			except: pass
 			self.clear_playback_properties(clear_navigation=False)
 			self._release_active_playback()
 		except:
