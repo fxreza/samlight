@@ -1,8 +1,8 @@
 {
   "plugin.video.samlight": {
-    "hash": "d0a34f411a99c7d423d7915db7b9ca310308f03c2edeeb2c9d9ff6da24745abd",
+    "hash": "af0a6b964a54cf699638379c2fdab65bd375afc88b314201fa43e9d3a61c0291",
     "upstream": "2.3.6",
-    "version": "2.3.6.1"
+    "version": "2.3.6.2"
   },
   "repository.samlight": {
     "hash": "c5d78253542586a3ce102a6936811fb6bd69394005fb48e18130032716adfeb5",
