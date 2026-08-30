@@ -1075,6 +1075,9 @@ def scraping_settings():
 def external_cache_check():
 	return any_external_cache_check()
 
+def fanarttv_api_key():
+	return get_setting('redlight.fanarttv_api', 'empty_setting')
+
 def omdb_api_key():
 	return get_setting('redlight.omdb_api', 'empty_setting')
 
