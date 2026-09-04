@@ -1,8 +1,12 @@
 name: Sync upstream and build repo
 
 on:
-  schedule:
-    - cron: "17 5 * * *"   # daily, 05:17 UTC
+  # Daily sync disabled 2026-09-03: upstream (The-Red-Wiz/TheRedWizard) wiped its
+  # public source and moved to a private repo, and repo.redwizard.xyz is now behind
+  # a login. There is nothing left to poll. Last synced version: 2.4.2.
+  # To re-enable, uncomment the schedule block below.
+  # schedule:
+  #   - cron: "17 5 * * *"   # daily, 05:17 UTC
   workflow_dispatch:
   push:
     branches: [main]
