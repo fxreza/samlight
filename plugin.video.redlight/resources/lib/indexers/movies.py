@@ -302,7 +302,7 @@ class Movies:
 			if trakt_manager_params: cm_append(['trakt_manager', ('[B]Trakt Lists Manager[/B]', 'RunPlugin(%s)' % trakt_manager_params)])
 			settings.append_list_shortcut_context_menus(cm_append, self.build_url, self.cm_sort_order, 'movie', tmdb_id, imdb_id, 'None', title, poster)
 			cm_append(['personal_manager', ('[B]Personal Lists Manager[/B]', 'RunPlugin(%s)' % personal_manager_params)])
-			cm_append(['favorites_manager', ('[B]Favorites Manager[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
+			cm_append(['favorites_manager', ('[B]Remove from Favorites[/B]' if str(tmdb_id) in self.favorite_ids else '[B]Add to Favorites[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
 			if playcount:
 				if self.widget_hide_watched: return
 				cm_append(['mark_watched', ('[B]Mark Unwatched[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'watched_status.mark_movie', 'action': 'mark_as_unwatched',
@@ -366,6 +366,9 @@ class Movies:
 		self.custom_cm_menu = self.cm_sort_order != settings.cm_default_order()
 		self.mpaa_region = settings.mpaa_region()
 		self.ai_model_active = settings.ai_model_active()
+		# One read per listing so the context menu can say what it will actually do.
+		from caches.favorites_cache import favorites_cache
+		self.favorite_ids = set(i['tmdb_id'] for i in favorites_cache.get_favorites('movie'))
 		rpdb_info = settings.rpdb_info('movie')
 		self.rpdb_api_key, self.rpdb_format = rpdb_info['rpdb_api_key'], rpdb_info['rpdb_format']
 		watched_db = watched_status.get_database(self.watched_indicators)

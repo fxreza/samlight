@@ -315,7 +315,7 @@ class TVShows:
 			if trakt_manager_params: cm_append(['trakt_manager', ('[B]Trakt Lists Manager[/B]', 'RunPlugin(%s)' % trakt_manager_params)])
 			settings.append_list_shortcut_context_menus(cm_append, self.build_url, self.cm_sort_order, 'tvshow', tmdb_id, imdb_id, tvdb_id, title, poster)
 			cm_append(['personal_manager', ('[B]Personal Lists Manager[/B]', 'RunPlugin(%s)' % personal_manager_params)])
-			cm_append(['favorites_manager', ('[B]Favorites Manager[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
+			cm_append(['favorites_manager', ('[B]Remove from Favorites[/B]' if str(tmdb_id) in self.favorite_ids else '[B]Add to Favorites[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
 			if playcount:
 				if self.widget_hide_watched: return
 			elif not unaired:
@@ -371,6 +371,9 @@ class TVShows:
 		self.current_date, self.current_time = get_datetime(), get_current_timestamp()
 		self.mpaa_region = settings.mpaa_region()
 		self.ai_model_active = settings.ai_model_active()
+		# One read per listing so the context menu can say what it will actually do.
+		from caches.favorites_cache import favorites_cache
+		self.favorite_ids = set(i['tmdb_id'] for i in favorites_cache.get_favorites('tvshow'))
 		rpdb_info = settings.rpdb_info('tvshow')
 		self.rpdb_api_key, self.rpdb_format = rpdb_info['rpdb_api_key'], rpdb_info['rpdb_format']
 		self.all_episodes, self.open_extras = settings.default_all_episodes(), settings.media_open_action('tvshow') == 1
