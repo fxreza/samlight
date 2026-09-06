@@ -1326,7 +1326,7 @@ def rescrape_action_value(action, default='0'):
 
 def cm_enabled():
 	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
-				'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,mdblist_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'
+				'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,tmdb_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'
 	setting = get_setting('redlight.context_menu.enabled', default)
 	if setting in ('', None, 'noop', '[]'): return default.split(',')
 	return setting.split(',')
@@ -1382,25 +1382,28 @@ def migrate_external_scraper_context_menu_for_upgrade(had_existing_settings):
 		changed = True
 	return changed
 
-def migrate_mdblist_send_lists_cm_for_upgrade(had_existing_settings):
-	"""Retro-fit the Send Lists to MDBList entry onto an existing saved menu.
+def migrate_send_lists_cm_for_upgrade(had_existing_settings):
+	"""Put Send Lists to TMDb on an existing saved menu, and drop the MDBList entry.
 
-	An install that already has a stored context_menu.enabled would otherwise never
-	see a newly shipped entry, since the stored value wins over the default.
-	Anchored after favorites_manager, which keeps it clear of the manager run that
-	_normalize_cm_list_order forces contiguous.
+	A stored context_menu.enabled wins over the shipped default, so a newly added
+	entry is invisible without this. Anchored after favorites_manager, clear of the
+	manager run that _normalize_cm_list_order forces contiguous. Also strips the
+	short-lived mdblist_send_lists value, whose action no longer exists.
 	"""
-	if get_setting('redlight.mdblist.send_lists_cm_migrated', 'false') == 'true': return False
-	set_setting('mdblist.send_lists_cm_migrated', 'true')
+	if get_setting('redlight.tmdb.send_lists_cm_migrated', 'false') == 'true': return False
+	set_setting('tmdb.send_lists_cm_migrated', 'true')
 	if not had_existing_settings: return False
-	item, changed = 'mdblist_send_lists', False
+	item, stale, changed = 'tmdb_send_lists', 'mdblist_send_lists', False
 	for setting_key in ('context_menu.enabled', 'context_menu.order'):
 		raw = get_setting('redlight.%s' % setting_key, '')
 		if raw in ('', None, 'noop', '[]'): continue
 		parts = [p for p in raw.split(',') if p]
-		if item in parts: continue
-		if 'favorites_manager' in parts: parts.insert(parts.index('favorites_manager') + 1, item)
-		else: parts.append(item)
+		original = list(parts)
+		parts = [p for p in parts if p != stale]
+		if item not in parts:
+			if 'favorites_manager' in parts: parts.insert(parts.index('favorites_manager') + 1, item)
+			else: parts.append(item)
+		if parts == original: continue
 		set_setting(setting_key, ','.join(parts))
 		changed = True
 	return changed
@@ -1486,7 +1489,7 @@ def migrate_cm_manager_order_for_upgrade():
 
 def cm_current_order():
 	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
-				'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,mdblist_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'
+				'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,tmdb_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'
 	setting = get_setting('redlight.context_menu.order', default)
 	if setting in ('', None, 'noop', '[]'): order = default.split(',')
 	else: order = setting.split(',')

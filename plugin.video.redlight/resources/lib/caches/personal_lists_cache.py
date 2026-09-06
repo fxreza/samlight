@@ -5,25 +5,30 @@ from caches.base_cache import connect_database, get_timestamp
 
 # A list can be linked to an MDBList list. The link is the MDBList id, never the
 # name, so renaming either side (or a typo) cannot break or mis-target it.
-_mdblist_id_column_ready = [False]
+_link_columns_ready = [False]
+_LINK_COLUMNS = {'mdblist': 'mdblist_id', 'tmdb': 'tmdb_id'}
 
-def _ensure_mdblist_id_column():
-	if _mdblist_id_column_ready[0]: return
+def _ensure_link_columns():
+	if _link_columns_ready[0]: return
 	# Set first: a failure here must not retry on every read.
-	_mdblist_id_column_ready[0] = True
+	_link_columns_ready[0] = True
 	try:
 		dbcon = connect_database('personal_lists_db')
 		columns = [i[1] for i in dbcon.execute('PRAGMA table_info(personal_lists)').fetchall()]
-		if 'mdblist_id' not in columns:
-			dbcon.execute('ALTER TABLE personal_lists ADD COLUMN mdblist_id text')
+		for column in _LINK_COLUMNS.values():
+			if column not in columns:
+				dbcon.execute('ALTER TABLE personal_lists ADD COLUMN %s text' % column)
 	except: pass
+
+def _ensure_mdblist_id_column():
+	_ensure_link_columns()
 
 class PersonalListsCache:
 	def make_list(self, list_name, author, sort_order, description, seen='false', poster='', fanart=''):
 		try:
 			time_stamp = get_timestamp()
 			if not author: author = 'Unknown'
-			_ensure_mdblist_id_column()
+			_ensure_link_columns()
 			dbcon = connect_database('personal_lists_db')
 			# Columns named explicitly: the table gained mdblist_id, so a bare VALUES list
 			# would no longer line up.
@@ -34,25 +39,35 @@ class PersonalListsCache:
 			return True
 		except: return False
 
-	def get_mdblist_link(self, list_name, author):
-		"""The MDBList list id this local list pushes to, or None."""
+	def get_service_link(self, service, list_name, author):
+		"""The remote list id this local list pushes to, or None. service: 'tmdb' | 'mdblist'."""
+		column = _LINK_COLUMNS.get(service)
+		if not column: return None
 		try:
-			_ensure_mdblist_id_column()
+			_ensure_link_columns()
 			dbcon = connect_database('personal_lists_db')
-			row = dbcon.execute('SELECT mdblist_id FROM personal_lists WHERE name=? AND author=?', (list_name, author)).fetchone()
+			row = dbcon.execute('SELECT %s FROM personal_lists WHERE name=? AND author=?' % column, (list_name, author)).fetchone()
 			if row and row[0] not in (None, '', '0'): return str(row[0])
 		except: pass
 		return None
 
-	def set_mdblist_link(self, list_name, author, mdblist_id):
+	def set_service_link(self, service, list_name, author, list_id):
 		"""Pass None to unlink."""
+		column = _LINK_COLUMNS.get(service)
+		if not column: return False
 		try:
-			_ensure_mdblist_id_column()
+			_ensure_link_columns()
 			dbcon = connect_database('personal_lists_db')
-			dbcon.execute('UPDATE personal_lists SET mdblist_id=? WHERE name=? AND author=?',
-						(str(mdblist_id) if mdblist_id not in (None, '', '0') else None, list_name, author))
+			dbcon.execute('UPDATE personal_lists SET %s=? WHERE name=? AND author=?' % column,
+						(str(list_id) if list_id not in (None, '', '0') else None, list_name, author))
 			return True
 		except: return False
+
+	def get_mdblist_link(self, list_name, author):
+		return self.get_service_link('mdblist', list_name, author)
+
+	def set_mdblist_link(self, list_name, author, mdblist_id):
+		return self.set_service_link('mdblist', list_name, author, mdblist_id)
 
 	def delete_list(self, list_name, author):
 		try:

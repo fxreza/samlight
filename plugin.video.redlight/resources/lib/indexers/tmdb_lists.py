@@ -6,12 +6,12 @@ from random import shuffle
 from threading import Thread
 from urllib.parse import unquote
 from apis.tmdblist_api import tmdb_list_api
-from caches.settings_cache import get_setting
+from caches.settings_cache import get_setting, set_setting
 from caches.tmdb_lists import tmdb_lists_cache
 from indexers.movies import Movies
 from indexers.tvshows import TVShows
 from modules.utils import paginate_list, sort_for_article, gen_md5, jsondate_to_datetime as js2date
-from modules.settings import paginate, page_limit, widget_hide_next_page, ignore_articles, jump_to_enabled
+from modules.settings import paginate, page_limit, widget_hide_next_page, ignore_articles, jump_to_enabled, tmdblist_user_active
 from modules import kodi_utils
 # logger = kodi_utils.logger
 
@@ -495,6 +495,113 @@ def process_trakt_list(chosen_list):
 			new_contents_append({'media_type': tmdb_media_converter[media_type], 'media_id': media_id})
 		except: continue
 	return new_contents
+
+_TMDB_FAV_LINK_SETTING = {'movie': 'tmdb.link_favorites_movie', 'tvshow': 'tmdb.link_favorites_tvshow'}
+
+def _tmdb_send_sources():
+	"""Everything sendable: local personal lists, plus each half of Favourites."""
+	from caches import personal_lists_cache, favorites_cache
+	sources = []
+	for row in personal_lists_cache.personal_lists_cache.get_lists():
+		sources.append({'kind': 'personal', 'label': row['name'], 'list_name': row['name'],
+						'author': row['author'], 'total': row['total'] or 0})
+	for media_type, label in (('movie', 'Favourites: Movies'), ('tvshow', 'Favourites: TV Shows')):
+		favs = favorites_cache.favorites_cache.get_favorites(media_type)
+		sources.append({'kind': 'favorites', 'label': label, 'media_type': media_type, 'total': len(favs)})
+	return sources
+
+def _tmdb_source_payload(source):
+	"""Source -> the v4 items payload: [{'media_type': 'movie'|'tv', 'media_id': int}]."""
+	if source['kind'] == 'favorites':
+		from caches import favorites_cache
+		media_type = source['media_type']
+		raw = [{'media_id': i['tmdb_id'], 'type': media_type} for i in favorites_cache.favorites_cache.get_favorites(media_type)]
+	else:
+		from caches import personal_lists_cache
+		raw = personal_lists_cache.personal_lists_cache.get_list(source['list_name'], source['author'], update_seen=False)
+	items = []
+	for item in raw or []:
+		try: media_id = int(str(item.get('media_id') or '').strip())
+		except: continue
+		if media_id <= 0: continue
+		items.append({'media_type': _tmdb_media_type(item.get('type') or 'movie'), 'media_id': media_id})
+	return items
+
+def _tmdb_source_link(source):
+	if source['kind'] == 'favorites':
+		value = get_setting('redlight.%s' % _TMDB_FAV_LINK_SETTING[source['media_type']], 'empty_setting')
+		return None if value in (None, '', '0', 'empty_setting') else str(value)
+	from caches import personal_lists_cache
+	return personal_lists_cache.personal_lists_cache.get_service_link('tmdb', source['list_name'], source['author'])
+
+def _tmdb_set_source_link(source, list_id):
+	if source['kind'] == 'favorites':
+		set_setting(_TMDB_FAV_LINK_SETTING[source['media_type']], str(list_id) if list_id else 'empty_setting')
+		return
+	from caches import personal_lists_cache
+	personal_lists_cache.personal_lists_cache.set_service_link('tmdb', source['list_name'], source['author'], list_id)
+
+def _tmdb_pick_target(source, user_lists):
+	"""Pick or create the TMDb list this source sends to. Returns (list_id, cancelled)."""
+	choices = [{'name': '[I]Create a new TMDb list (private)...[/I]', 'id': None}]
+	choices += [{'name': i.get('name') or 'TMDb List', 'id': i.get('id')} for i in user_lists]
+	display = [{'line1': i['name']} for i in choices]
+	chosen = kodi_utils.select_dialog(choices, items=json.dumps(display), heading='Send "%s" to' % source['label'], narrow_window='true')
+	if chosen is None: return None, True
+	if chosen['id'] is not None: return str(chosen['id']), False
+	new_name = kodi_utils.kodi_dialog().input('Name for the new TMDb list', defaultt=source['label'])
+	if not new_name: return None, True
+	data = tmdb_list_api.make_list(unquote(new_name))
+	if not data or not data.get('success') or not data.get('id'):
+		kodi_utils.notification(kodi_utils.LIST_CREATE_ERROR, 3000)
+		return None, False
+	tmdb_lists_cache.clear_all_lists()
+	return str(data.get('id')), False
+
+def _tmdb_send_source(source, user_lists, allow_pick=True):
+	"""Send one source. Returns a one line result string."""
+	items = _tmdb_source_payload(source)
+	if not items: return '%s: empty, nothing sent' % source['label']
+	list_id = _tmdb_source_link(source)
+	if list_id and not any(str(i.get('id')) == str(list_id) for i in user_lists):
+		_tmdb_set_source_link(source, None)
+		list_id = None
+	if not list_id:
+		if not allow_pick: return '%s: not linked yet' % source['label']
+		list_id, cancelled = _tmdb_pick_target(source, user_lists)
+		if cancelled: return '%s: cancelled' % source['label']
+		if not list_id: return '%s: could not create the list' % source['label']
+		_tmdb_set_source_link(source, list_id)
+	if not process_add_to_list(list_id, items): return '%s: TMDb refused the items' % source['label']
+	return '%s: %s items sent' % (source['label'], len(items))
+
+def tmdb_send_lists(params=None):
+	"""Send local lists and Favourites up to TMDb.
+
+	Lives on the item context menu so it works from any widget. TMDb has no daily
+	request cap and no list limit, and the whole list goes up in one request.
+	"""
+	if not tmdblist_user_active(): return kodi_utils.notification('TMDb account not authorised', 3000)
+	sources = _tmdb_send_sources()
+	if not sources: return kodi_utils.notification('Nothing to send', 3000)
+	user_lists = tmdb_list_api.get_user_lists() or []
+	if isinstance(user_lists, dict): user_lists = user_lists.get('results') or []
+	rows = [{'label': '[B]Send everything already linked[/B]', 'source': None}]
+	for source in sources:
+		target = _tmdb_source_link(source)
+		name = next((i.get('name') for i in user_lists if str(i.get('id')) == str(target)), None) if target else None
+		status = '[COLOR lime]-> %s[/COLOR]' % name if name else '[COLOR grey]not linked[/COLOR]'
+		rows.append({'label': '%s [I](x%s)[/I]  %s' % (source['label'], source['total'], status), 'source': source})
+	display = [{'line1': i['label']} for i in rows]
+	chosen = kodi_utils.select_dialog(rows, items=json.dumps(display), heading='Send Lists to TMDb', narrow_window='true')
+	if chosen is None: return
+	if chosen['source'] is not None:
+		result = _tmdb_send_source(chosen['source'], user_lists)
+		kodi_utils.ok_dialog(heading='TMDb', text=result)
+		return kodi_utils.kodi_refresh()
+	results = [_tmdb_send_source(i, user_lists, allow_pick=False) for i in sources]
+	kodi_utils.ok_dialog(heading='Sent to TMDb', text='[CR]'.join(results), scroll=True)
+	kodi_utils.kodi_refresh()
 
 def process_add_to_list(list_id, new_contents):
 	success = False

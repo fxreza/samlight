@@ -164,16 +164,17 @@ class TMDbListAPI:
 		url = '%s/account/%s/%s' % (self.base_url_v3, account_session_id, list_type)
 		return self.request_data(url, params={'session_id': session_id}, data={'media_type': media_type, 'media_id': str(media_id), list_type: status}, method='post')
 
-	def make_list(self, list_name):
+	def make_list(self, list_name, public=False):
 		url = '%s/list' % self.base_url
-		return self.request_data(url, data={'description': '', 'name': list_name, 'iso_3166_1': 'US', 'iso_639_1': 'en', 'public': True}, method='post')
+		# Private by default: a list built from someone's own library should not land on their public TMDb profile.
+		return self.request_data(url, data={'description': '', 'name': list_name, 'iso_3166_1': 'US', 'iso_639_1': 'en', 'public': bool(public)}, method='post')
 
 	def delete_list(self, list_id):
 		url = '%s/list/%s' % (self.base_url, list_id)
 		return self.request_data(url, method='delete')
 
-	def rename_list(self, list_id, new_name):
-		data = {'description': '', 'name': new_name, 'iso_3166_1': 'US', 'iso_639_1': 'en', 'public': True}
+	def rename_list(self, list_id, new_name, public=False):
+		data = {'description': '', 'name': new_name, 'iso_3166_1': 'US', 'iso_639_1': 'en', 'public': bool(public)}
 		url = '%s/list/%s' % (self.base_url, list_id)
 		return self.request_data(url, data=data, method='put')
 

@@ -762,12 +762,12 @@ def sync_settings(params={}):
 		currentsettings['migration.ad_cache_check_removed_v173'] = 'true'
 		if load_properties: settings_cache.set_memory_cache('migration.ad_cache_check_removed_v173', 'true')
 	if currentsettings:
-		from modules.settings import migrate_simkl_context_menu_for_upgrade, migrate_mdblist_context_menu_for_upgrade, migrate_punchplay_context_menu_for_upgrade, migrate_cm_manager_order_for_upgrade, migrate_external_scraper_context_menu_for_upgrade, migrate_mdblist_send_lists_cm_for_upgrade
+		from modules.settings import migrate_simkl_context_menu_for_upgrade, migrate_mdblist_context_menu_for_upgrade, migrate_punchplay_context_menu_for_upgrade, migrate_cm_manager_order_for_upgrade, migrate_external_scraper_context_menu_for_upgrade, migrate_send_lists_cm_for_upgrade
 		if migrate_simkl_context_menu_for_upgrade(had_existing_settings): migrated = True
 		if migrate_mdblist_context_menu_for_upgrade(had_existing_settings): migrated = True
 		if migrate_punchplay_context_menu_for_upgrade(had_existing_settings): migrated = True
 		if migrate_external_scraper_context_menu_for_upgrade(had_existing_settings): migrated = True
-		if migrate_mdblist_send_lists_cm_for_upgrade(had_existing_settings): migrated = True
+		if migrate_send_lists_cm_for_upgrade(had_existing_settings): migrated = True
 		if migrate_cm_manager_order_for_upgrade(): migrated = True
 		if currentsettings.get('migration.my_content_nav_mode_v136') != 'true':
 			try:
@@ -1616,10 +1616,10 @@ def default_settings():
 #==================== Context Menu
 {'setting_id': 'context_menu.enabled', 'setting_type': 'string',
 'setting_default': 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
-'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,mdblist_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'},
+'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,tmdb_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'},
 {'setting_id': 'context_menu.order', 'setting_type': 'string',
 'setting_default': 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
-'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,mdblist_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'},
+'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,tmdb_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'},
 
 
 #==================================================================================#
@@ -1668,6 +1668,8 @@ def default_settings():
 #==================== TMDb Lists
 {'setting_id': 'tmdb.lists_read_token', 'setting_type': 'string', 'setting_default': 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhMGJmMjA3YzVmZjZjMGNhYWJhYzAzMjdlMzliMWNkMiIsIm5iZiI6MTUwMzk0ODAxMC43NTQsInN1YiI6IjU5YTQ2Y2U4YzNhMzY4MGIxMjAwMjgxYiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.2pYaMVzWy-TNg2SBlkP_CrYWpaxcU7LZIZLPdgJp9jw'},
 {'setting_id': 'tmdb.token', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'tmdb.link_favorites_movie', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'tmdb.link_favorites_tvshow', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'tmdb.username', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 #==================== Fanart.tv
 {'setting_id': 'fanarttv_api', 'setting_type': 'string', 'setting_default': 'empty_setting'},
