@@ -301,6 +301,11 @@ class TVShows:
 				url_params = extras_params
 			else: cm_append(['extras', ('[B]Extras[/B]', 'RunPlugin(%s)' % extras_params)])
 			cm_append(['options', ('[B]Options[/B]', 'RunPlugin(%s)' % options_params)])
+			# Browse TV Seasons on the show itself. The catalogue has always offered this
+			# entry, but only episodes ever appended it, so on a show it had nowhere to
+			# come from. Uses the same value, so it obeys the tick you already have.
+			cm_append(['browse_seasons', ('[B]Browse TV Seasons[/B]', self.window_command % self.build_url(
+				{'mode': 'build_season_list', 'tmdb_id': tmdb_id}))])
 			settings.append_external_scraper_settings_cm(cm_append, self.build_url)
 			cm_append(['recommended', ('[B]Browse Recommended[/B]', self.window_command % browse_recommended_params)])
 			cm_append(['related', ('[B]Browse Related[/B]', self.window_command % browse_related_params)])
