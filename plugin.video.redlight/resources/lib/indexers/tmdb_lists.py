@@ -674,38 +674,6 @@ def _tmdb_sync_source(source, user_lists, allow_pick=True):
 	if gone_down: bits.append('%s removed here' % gone_down)
 	return '%s: %s' % (source['label'], ', '.join(bits)), True
 
-_TMDB_OPEN_SYNC_COOLDOWN = 300
-
-def tmdb_sync_on_open(kind, list_name=None, author=None, media_type=None):
-	"""Sync just the list about to be shown, so you are looking at current data.
-
-	Deliberately cheap and quiet: one list only, no request to enumerate your TMDb
-	lists, no widget refresh (the listing is about to be drawn anyway), and a
-	cooldown so walking in and out of a list does not re-sync each time. Any failure
-	is swallowed - a sync problem must never stop a list from opening.
-	"""
-	try:
-		if get_setting('redlight.tmdb.list_sync_on_open', 'true') != 'true': return False
-		# Never on the widget path. This runs while Kodi waits for the listing, and a slow
-		# network must not hold up the home screen. Inside the addon a brief wait is fine.
-		if kodi_utils.external(): return False
-		if not tmdblist_user_active(): return False
-		from caches import list_sync_cache
-		if kind == 'favorites':
-			source = {'kind': 'favorites', 'label': 'Favourites', 'media_type': media_type,
-					'total': 0, 'key': 'favorites:%s' % media_type}
-		else:
-			source = {'kind': 'personal', 'label': list_name, 'list_name': list_name,
-					'author': author or 'Unknown', 'total': 0, 'key': 'personal:%s|%s' % (list_name, author or 'Unknown')}
-		if not _tmdb_source_link(source): return False
-		last = list_sync_cache.last_synced(_TMDB_SYNC_SERVICE, source['key'])
-		if last and (time.time() - last) < _TMDB_OPEN_SYNC_COOLDOWN: return False
-		_tmdb_sync_source(source, None, allow_pick=False)
-		return True
-	except Exception as e:
-		kodi_utils.logger('TMDb Sync', 'on open skipped: %s' % e)
-		return False
-
 _change_sync_lock = Lock()
 _change_sync_busy = set()
 
@@ -742,6 +710,38 @@ def tmdb_sync_after_change(kind, list_name=None, author=None, media_type=None):
 	except Exception as e:
 		kodi_utils.logger('TMDb Sync', 'on change skipped: %s' % e)
 		return False
+
+def tmdb_poll_lists():
+	"""One request: has any linked list changed on TMDb? Sync only the ones that did.
+
+	This is the cheap check that makes a short interval affordable. TMDb returns a
+	last-changed marker per list, so an idle poll is a single small request, no list
+	downloads, no database writes and no widget redraw.
+	"""
+	from caches import list_sync_cache
+	if not tmdblist_user_active(): return 'no account'
+	sources = [i for i in _tmdb_send_sources() if _tmdb_source_link(i)]
+	if not sources: return 'nothing linked'
+	tmdb_lists_cache.clear_all_lists()
+	user_lists = tmdb_list_api.get_user_lists() or []
+	if isinstance(user_lists, dict): user_lists = user_lists.get('results') or []
+	if not user_lists: return 'failed'
+	stamps = {}
+	for item in user_lists:
+		list_id = str(item.get('id'))
+		# number_of_items covers the case of a list edited twice within one timestamp tick.
+		stamps[list_id] = '%s|%s' % (item.get('updated_at') or '', item.get('number_of_items') or item.get('item_count') or '')
+	changed = False
+	for source in sources:
+		list_id = str(_tmdb_source_link(source))
+		stamp = stamps.get(list_id)
+		if stamp is None: continue
+		if stamp == list_sync_cache.get_remote_stamp(_TMDB_SYNC_SERVICE, source['key']): continue
+		_, source_changed = _tmdb_sync_source(source, None, allow_pick=False)
+		changed = changed or source_changed
+		list_sync_cache.set_remote_stamp(_TMDB_SYNC_SERVICE, source['key'], list_id, stamp)
+	if changed: kodi_utils.kodi_refresh()
+	return 'success'
 
 def tmdb_sync_lists(params=None, silent=False):
 	"""Two way sync between the local lists and their TMDb twins.

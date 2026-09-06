@@ -343,44 +343,34 @@ class ServiceExpiryAlerts:
 class TMDbListSyncMonitor:
 	def run(self, monitor):
 		kodi_utils.logger('Red Light', 'TMDbListSyncMonitor Service Starting')
-		from modules.settings import tmdb_list_sync_enabled, tmdb_list_sync_hours, tmdblist_user_active
+		from modules.settings import tmdb_list_sync_enabled, tmdb_list_sync_hours, tmdb_list_poll_minutes, tmdblist_user_active
 		player = kodi_utils.kodi_player()
 		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
 		# Well clear of the boot storm: this one talks to TMDb and writes to local lists.
 		wait_for_abort(240)
-		# One sync per boot regardless of the timer: the common case is things added
-		# elsewhere while this box was switched off.
-		startup_run = True
 		while not monitor.abortRequested():
 			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
+			wait_time = max(60, tmdb_list_poll_minutes() * 60)
 			try:
-				# A box that crashes and relaunches several times a day would otherwise sync
-				# on every relaunch. Collapse a restart storm into one run.
-				due = (startup_run and not _tmdb_synced_within(30)) or _tmdb_sync_due(tmdb_list_sync_hours())
-				startup_run = False
-				if tmdb_list_sync_enabled() and tmdblist_user_active() and due \
-						and not kodi_utils.service_shutting_down(monitor):
-					from indexers.tmdb_lists import tmdb_sync_lists
-					status = tmdb_sync_lists(silent=True)
-					if status == 'success':
-						from caches.settings_cache import set_setting
-						set_setting('tmdb.list_sync_last_run', str(int(time())))
-					kodi_utils.logger('Red Light', 'TMDb List Sync %s' % status)
+				if tmdb_list_sync_enabled() and tmdblist_user_active() and not kodi_utils.service_shutting_down(monitor):
+					from indexers.tmdb_lists import tmdb_sync_lists, tmdb_poll_lists
+					if _tmdb_sync_due(tmdb_list_sync_hours()):
+						# The safety net. Compares actual contents rather than trusting a
+						# timestamp, so a marker that stops moving cannot silently freeze
+						# the sync the way MDBList's did.
+						status = tmdb_sync_lists(silent=True)
+						if status == 'success':
+							from caches.settings_cache import set_setting
+							set_setting('tmdb.list_sync_last_run', str(int(time())))
+						kodi_utils.logger('Red Light', 'TMDb List Full Sync %s' % status)
+					else:
+						# One small request. Does nothing at all unless a list actually moved.
+						tmdb_poll_lists()
 			except Exception as e: kodi_utils.logger('Red Light', 'TMDb List Sync Failed: %s' % str(e))
-			# Tick often, the stored last run decides when work happens, so a box that was
-			# unplugged for days catches up instead of missing them.
-			wait_for_abort(1800)
+			wait_for_abort(wait_time)
 		try: del player
 		except: pass
 		return kodi_utils.logger('Red Light', 'TMDbListSyncMonitor Service Finished')
-
-def _tmdb_synced_within(minutes):
-	"""True when a sync already ran in the last `minutes`, so a relaunch can skip its own."""
-	from caches.settings_cache import get_setting
-	last = get_setting('redlight.tmdb.list_sync_last_run', 'empty_setting')
-	if last in (None, '', 'empty_setting'): return False
-	try: return (time() - int(last)) < (minutes * 60)
-	except: return False
 
 def _tmdb_sync_due(interval_hours):
 	from caches.settings_cache import get_setting
@@ -439,10 +429,13 @@ class RedLightMonitor(Monitor):
 				_start_daemon(lambda: BootstrapSettings().run(self))
 		except Exception as e: kodi_utils.logger('BootstrapSettings', str(e))
 		start_custom_windows_prepare(self)
-		_start_daemon(lambda: TraktMonitor().run(self))
-		_start_daemon(lambda: SimklMonitor().run(self))
-		_start_daemon(lambda: MdblistMonitor().run(self))
-		_start_daemon(lambda: PunchPlayMonitor().run(self))
+		# Only start a provider's loop when that provider is switched on. A disabled
+		# provider costs nothing at all: no thread, no timer, no requests.
+		from modules.settings import provider_enabled
+		if provider_enabled('trakt'): _start_daemon(lambda: TraktMonitor().run(self))
+		if provider_enabled('simkl'): _start_daemon(lambda: SimklMonitor().run(self))
+		if provider_enabled('mdblist'): _start_daemon(lambda: MdblistMonitor().run(self))
+		if provider_enabled('punchplay'): _start_daemon(lambda: PunchPlayMonitor().run(self))
 		_start_daemon(lambda: WidgetRefresher().run(self))
 		try: AutoStart().run(self)
 		except Exception as e: kodi_utils.logger('AutoStart', str(e))

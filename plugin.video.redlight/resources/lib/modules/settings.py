@@ -23,19 +23,29 @@ def trakt_secret():
 	return get_setting('redlight.trakt.secret', '')
 
 def trakt_user_active():
+	if not provider_enabled('trakt'): return False
 	from caches.settings_cache import settings_cache
 	val = settings_cache.read_db_value('trakt.user')
 	return val not in (None, 'empty_setting', '')
 
 def simkl_user_active():
+	if not provider_enabled('simkl'): return False
 	from caches.settings_cache import settings_cache
 	user = settings_cache.read_db_value('simkl.user')
 	token = settings_cache.read_db_value('simkl.token')
 	return user not in (None, 'empty_setting', '') and token not in (None, '0', '', 'empty_setting')
 
+def provider_enabled(name):
+	"""Master switch per meta provider. Off means hidden everywhere and no background work.
+
+	Every menu, context menu entry and service loop already asks the matching
+	<provider>_user_active(), so gating there is the one place that has to change.
+	"""
+	return get_setting('redlight.%s.enabled' % name, 'false') == 'true'
+
 def mdblist_enabled():
 	"""MDBList is off by default. Turning it off hides every MDBList menu and stops its sync."""
-	return get_setting('redlight.mdblist.enabled', 'false') == 'true'
+	return provider_enabled('mdblist')
 
 def mdblist_user_active():
 	if not mdblist_enabled(): return False
@@ -48,6 +58,7 @@ def mdblist_user_active():
 		and refresh not in (None, '0', '', 'empty_setting'))
 
 def punchplay_user_active():
+	if not provider_enabled('punchplay'): return False
 	"""Authorised when a usable access token exists (username is display-only)."""
 	from caches.settings_cache import settings_cache, get_setting
 	token = settings_cache.read_db_value('punchplay.token')
@@ -62,6 +73,7 @@ def punchplay_sync_interval():
 	return interval, interval * 60
 
 def wetrakr_user_active():
+	if not provider_enabled('wetrakr'): return False
 	from caches.settings_cache import settings_cache
 	user = settings_cache.read_db_value('wetrakr.user')
 	token = settings_cache.read_db_value('wetrakr.token')
@@ -114,6 +126,10 @@ def simkl_sync_interval():
 
 def tmdb_list_sync_enabled():
 	return get_setting('redlight.tmdb.list_sync_enabled', 'true') == 'true'
+
+def tmdb_list_poll_minutes():
+	try: return max(1, int(get_setting('redlight.tmdb.list_poll_minutes', '5')))
+	except: return 5
 
 def tmdb_list_sync_hours():
 	try: return max(1, int(get_setting('redlight.tmdb.list_sync_hours', '24')))

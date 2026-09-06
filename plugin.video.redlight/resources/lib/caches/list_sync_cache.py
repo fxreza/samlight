@@ -17,7 +17,10 @@ def _ensure_table():
 	try:
 		dbcon = connect_database('list_sync_db')
 		dbcon.execute('CREATE TABLE IF NOT EXISTS list_sync (service text not null, source_key text not null, '
-					'list_id text, snapshot text, updated text, unique (service, source_key))')
+					'list_id text, snapshot text, updated text, remote_stamp text, unique (service, source_key))')
+		columns = [i[1] for i in dbcon.execute('PRAGMA table_info(list_sync)').fetchall()]
+		if 'remote_stamp' not in columns:
+			dbcon.execute('ALTER TABLE list_sync ADD COLUMN remote_stamp text')
 	except: pass
 
 def get_snapshot(service, source_key):
@@ -55,3 +58,24 @@ def last_synced(service, source_key):
 		if row and row[0]: return int(row[0])
 	except: pass
 	return 0
+
+def get_remote_stamp(service, source_key):
+	"""The remote list's last-changed marker as of the last poll."""
+	try:
+		_ensure_table()
+		dbcon = connect_database('list_sync_db')
+		row = dbcon.execute('SELECT remote_stamp FROM list_sync WHERE service=? AND source_key=?', (service, source_key)).fetchone()
+		if row and row[0]: return str(row[0])
+	except: pass
+	return ''
+
+def set_remote_stamp(service, source_key, list_id, stamp):
+	try:
+		_ensure_table()
+		dbcon = connect_database('list_sync_db')
+		row = dbcon.execute('SELECT source_key FROM list_sync WHERE service=? AND source_key=?', (service, source_key)).fetchone()
+		if row: dbcon.execute('UPDATE list_sync SET remote_stamp=? WHERE service=? AND source_key=?', (str(stamp), service, source_key))
+		else: dbcon.execute('INSERT INTO list_sync (service, source_key, list_id, snapshot, updated, remote_stamp) VALUES (?, ?, ?, ?, ?, ?)',
+						(service, source_key, str(list_id), repr([]), str(int(time.time())), str(stamp)))
+		return True
+	except: return False

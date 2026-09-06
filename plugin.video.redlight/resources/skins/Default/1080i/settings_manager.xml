@@ -1702,6 +1702,38 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
+                          <property name="setting_label">    - Enable Trakt</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.trakt.enabled)]</property>
+                          <property name="setting_description">Off by default. While off, every Trakt menu is hidden and no Trakt request or background sync runs. Your account is untouched.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=trakt.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
+                          <property name="setting_label">    - Enable Simkl</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.simkl.enabled)]</property>
+                          <property name="setting_description">Off by default. While off, every Simkl menu is hidden and no Simkl request or background sync runs. Your account is untouched.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=simkl.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
+                          <property name="setting_label">    - Enable PunchPlay</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.punchplay.enabled)]</property>
+                          <property name="setting_description">Off by default. While off, every PunchPlay menu is hidden and no PunchPlay request or background sync runs. Your account is untouched.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=punchplay.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
+                          <property name="setting_label">    - Enable WeTrakr</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.wetrakr.enabled)]</property>
+                          <property name="setting_description">Off by default. While off, every WeTrakr menu is hidden and no WeTrakr request or background sync runs. Your account is untouched.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=wetrakr.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
                           <property name="setting_label">    - Resync Interval (mins)</property>
                           <property name="setting_type">numeric</property>
@@ -2205,303 +2237,6 @@
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_string&amp;setting_id=tmdb.lists_read_token)</onclick>
                       </item>
                       <item>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>String.EndsWith(Window(10000).Property(redlight.default_addon_fanart),Window(10000).Property(redlight.addon_fanart))</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.EndsWith(Window(10000).Property(redlight.default_addon_fanart),Window(10000).Property(redlight.addon_fanart))</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.limit_concurrent_threads),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.ad),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.easynews),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.oc),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.pm),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.rd),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.tb),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.omdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.omdb_api),empty_setting)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.extras.enable_extra_ratings),true)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.media_open_action_movie),0)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.media_open_action_tvshow),0)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_enabled),0)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.google_api),empty_setting) + String.IsEqual(Window(10000).Property(redlight.groq_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.google_api),empty_setting) | !String.IsEqual(Window(10000).Property(redlight.groq_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.google_api),empty_setting) | !String.IsEqual(Window(10000).Property(redlight.groq_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.paginate.lists),1) | String.IsEqual(Window(10000).Property(redlight.paginate.lists),3)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.paginate.lists),2) | String.IsEqual(Window(10000).Property(redlight.paginate.lists),3)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.personal_list.highlight_unseen),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.widget_refresh_timer),0)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.widget_hide_watched),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_enabled),0)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.single_ep_unwatched_episodes),true)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.nextep.limit_history),true)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.client),ppc_20f43c36d33f17d01241ed83)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.client),6cacc8db22e67b2cd423ef73a9fd3a4f45146ba7fbf30fb2ae28f2fa9d0c2583)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.client),30e6c73030cc41dbff996200ac3060cde689555ba207020e08a2175533b912c3)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.secret),726f6b12a9f0079d5850a7bb0e15860725cd487cbfb54ce5471de217639465c5)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.wetrakr.scrobble),true)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.fanarttv_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.omdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.tmdb_api),a0bf207c5ff6c0caabac0327e39b1cd2)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.tmdb_api),a0bf207c5ff6c0caabac0327e39b1cd2)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <property name="setting_label">    - Sync Lists with TMDb Automatically</property>
                           <property name="setting_type">boolean</property>
@@ -2510,316 +2245,20 @@
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tmdb.list_sync_enabled)</onclick>
                       </item>
                       <item>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>String.EndsWith(Window(10000).Property(redlight.default_addon_fanart),Window(10000).Property(redlight.addon_fanart))</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.EndsWith(Window(10000).Property(redlight.default_addon_fanart),Window(10000).Property(redlight.addon_fanart))</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.limit_concurrent_threads),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.ad),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.easynews),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.oc),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.pm),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.rd),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.services.expiry_alert_days),0)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.services.authorised.tb),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(10)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.omdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.omdb_api),empty_setting)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.extras.enable_extra_ratings),true)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.media_open_action_movie),0)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.media_open_action_tvshow),0)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_enabled),0)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.google_api),empty_setting) + String.IsEqual(Window(10000).Property(redlight.groq_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.google_api),empty_setting) | !String.IsEqual(Window(10000).Property(redlight.groq_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(20)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.google_api),empty_setting) | !String.IsEqual(Window(10000).Property(redlight.groq_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.paginate.lists),1) | String.IsEqual(Window(10000).Property(redlight.paginate.lists),3)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.paginate.lists),2) | String.IsEqual(Window(10000).Property(redlight.paginate.lists),3)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.use_viewtypes),true) + String.IsEqual(Window(10000).Property(redlight.manual_viewtypes),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.personal_list.highlight_unseen),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.widget_refresh_timer),0)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.widget_hide_watched),true)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(30)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_api),empty_setting)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.rpdb_enabled),0)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.single_ep_unwatched_episodes),true)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.nextep.limit_history),true)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
-                          <visible>Container(2000).HasFocus(40)</visible>
                           <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.punchplay.client),ppc_20f43c36d33f17d01241ed83)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.simkl.client),6cacc8db22e67b2cd423ef73a9fd3a4f45146ba7fbf30fb2ae28f2fa9d0c2583)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.client),30e6c73030cc41dbff996200ac3060cde689555ba207020e08a2175533b912c3)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.trakt.secret),726f6b12a9f0079d5850a7bb0e15860725cd487cbfb54ce5471de217639465c5)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>String.IsEqual(Window(10000).Property(redlight.wetrakr.scrobble),true)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.wetrakr.user),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.fanarttv_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.omdb_api),empty_setting)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.tmdb_api),a0bf207c5ff6c0caabac0327e39b1cd2)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>!String.IsEqual(Window(10000).Property(redlight.tmdb_api),a0bf207c5ff6c0caabac0327e39b1cd2)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <visible>Container(2000).HasFocus(50)</visible>
-                          <property name="setting_label">    - List Sync Interval (hours)</property>
+                          <property name="setting_label">    - Full Sync Interval (hours)</property>
                           <property name="setting_type">numeric</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb.list_sync_hours)]</property>
-                          <property name="setting_description">How often the automatic list sync runs. Default 24 hours.</property>
+                          <property name="setting_description">How often to run a full content comparison as a safety net, on top of the quick check. Default 24 hours.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_numeric&amp;setting_id=tmdb.list_sync_hours)</onclick>
                       </item>
                       <item>
-                          <property name="setting_label">    - Sync a List When You Open It</property>
-                          <property name="setting_type">boolean</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb.list_sync_on_open)]</property>
-                          <property name="setting_description">Freshen a single list from TMDb as you open it inside the addon. Skipped on home screen widgets, and limited to once every five minutes per list.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tmdb.list_sync_on_open)</onclick>
+                          <visible>Container(2000).HasFocus(50)</visible>
+                          <property name="setting_label">    - Check TMDb Every (mins)</property>
+                          <property name="setting_type">numeric</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb.list_poll_minutes)]</property>
+                          <property name="setting_description">How often to ask TMDb whether any linked list changed. One small request, and nothing happens unless something moved. Default 5 minutes.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_numeric&amp;setting_id=tmdb.list_poll_minutes)</onclick>
                       </item>
                       <item>
                           <property name="setting_label">    - Sync Straight After a Change</property>
