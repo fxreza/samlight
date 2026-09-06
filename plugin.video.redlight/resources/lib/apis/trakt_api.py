@@ -234,6 +234,10 @@ def trakt_get_device_token(device_codes):
 
 def trakt_refresh_token():
 	try:
+		# With no refresh token there is nothing to refresh, and the request can only
+		# fail. Without this guard every public Trakt call (Trending, Top 10 Box Office)
+		# fires a doomed oauth/token POST first.
+		if _trakt_setting('trakt.refresh') in (None, '', '0', 'empty_setting'): return None
 		CLIENT_ID = settings.trakt_client()
 		if CLIENT_ID in (None, 'empty_setting', ''): return no_client_key()
 		CLIENT_SECRET = settings.trakt_secret()
