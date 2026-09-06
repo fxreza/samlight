@@ -5,7 +5,9 @@ A personal fork of **Red Light** (`plugin.video.redlight`) from
 **`plugin.video.samlight`** through a self-hosted Kodi repository so Kodi
 updates it automatically.
 
-Upstream is GPL-3.0. All credit for the addon belongs to The Red Wizard.
+Upstream is GPL-3.0. All credit for the original addon belongs to The Red
+Wizard. Upstream took its public source down in September 2026; this repo is now
+standalone and no longer syncs from it.
 
 ## Install in Kodi
 
@@ -22,48 +24,34 @@ From then on Kodi checks the repository on its own and pulls new builds.
 
 | Path | What it is |
 | --- | --- |
-| `plugin.video.redlight/` | The addon source. Upstream's code **plus my changes**. Folder name and addon id stay upstream's on purpose. |
+| `plugin.video.redlight/` | The addon source. The folder name and addon id stay as upstream's, and are rewritten at build time. |
 | `repo/repository.samlight/` | The Kodi repository addon that points at GitHub Pages. |
-| `tools/` | Sync and build scripts. |
+| `tools/` | The build script. |
 | `docs/` | What GitHub Pages serves: `addons.xml`, `addons.xml.md5`, and the zips. Generated - never edit by hand. |
 
-Two branches:
-
-- **`upstream`** - pristine snapshots of upstream's `plugin.video.redlight`,
-  nothing else, never hand-edited.
-- **`main`** - `upstream` plus my tweaks and the tooling.
-
-`git diff upstream main -- plugin.video.redlight` shows exactly what I changed.
+One branch: **`main`**.
 
 ## Why the id is rewritten at build time, not in the repo
 
 `tools/build.py` copies the source, replaces every `plugin.video.redlight`
-string with `plugin.video.samlight`, and zips that. The repo itself keeps
-upstream's names, which means:
+string with `plugin.video.samlight`, and zips that. Keeping the original names
+in the tree means the source stays directly comparable with the version it was
+forked from.
 
-- `git merge upstream` is a clean text merge instead of a rename war,
-- any new file upstream adds gets renamed automatically,
-- my actual changes stay a small, readable diff.
+## Publishing an update
 
-## Updating from upstream
+Edit the addon under `plugin.video.redlight/`, commit, and push to `main`. The
+GitHub Action rebuilds `docs/` and publishes it; Kodi picks it up on its next
+repository check.
 
-Upstream's git endpoints are disabled (`403`), so syncing pulls the source zip
-that codeload still serves rather than using a git remote.
+To build and publish by hand instead:
 
 ```powershell
 pwsh tools\update.ps1
 ```
 
-That syncs the `upstream` branch, merges it into `main`, rebuilds `docs/`, and
-pushes. A GitHub Action does the same thing daily, and fails loudly if upstream
-touched a line I also touched - in that case resolve it locally:
-
-```powershell
-git checkout main; git merge upstream
-```
-
 ## Versioning
 
-Built version = upstream's version plus a revision counter, e.g. upstream
-`2.1.7` becomes `2.1.7.1`, `2.1.7.2`, ... A new number is only minted when the
-built content actually changed, so Kodi never re-downloads an identical build.
+Built version = the source's version plus a revision counter, e.g. `2.4.2`
+becomes `2.4.2.1`, `2.4.2.2`, ... A new number is only minted when the built
+content actually changed, so Kodi never re-downloads an identical build.

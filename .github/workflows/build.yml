@@ -1,12 +1,6 @@
-name: Sync upstream and build repo
+name: Build repository
 
 on:
-  # Daily sync disabled 2026-09-03: upstream (The-Red-Wiz/TheRedWizard) wiped its
-  # public source and moved to a private repo, and repo.redwizard.xyz is now behind
-  # a login. There is nothing left to poll. Last synced version: 2.4.2.
-  # To re-enable, uncomment the schedule block below.
-  # schedule:
-  #   - cron: "17 5 * * *"   # daily, 05:17 UTC
   workflow_dispatch:
   push:
     branches: [main]
@@ -38,23 +32,6 @@ jobs:
         run: |
           git config user.name "samlight-bot"
           git config user.email "actions@github.com"
-
-      - name: Sync pristine upstream snapshot
-        if: github.event_name != 'push'
-        run: python tools/sync_upstream.py
-
-      - name: Push snapshot branch
-        if: github.event_name != 'push'
-        run: git push origin upstream
-
-      - name: Merge upstream into main
-        if: github.event_name != 'push'
-        run: |
-          if ! git merge upstream --no-edit; then
-            git merge --abort
-            echo "::error::Upstream changed lines you also changed. Resolve locally: git checkout main && git merge upstream"
-            exit 1
-          fi
 
       - name: Build repository
         run: python tools/build.py
