@@ -1479,6 +1479,8 @@ def default_settings():
 {'setting_id': 'mdblist.refresh', 'setting_type': 'string', 'setting_default': '0'},
 {'setting_id': 'mdblist.sync_interval', 'setting_type': 'action', 'setting_default': '60', 'min_value': '5', 'max_value': '600'},
 {'setting_id': 'mdblist.list_refresh', 'setting_type': 'action', 'setting_default': '60', 'min_value': '5', 'max_value': '1440'},
+{'setting_id': 'mdblist.link_favorites_movie', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'mdblist.link_favorites_tvshow', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'mdblist.refresh_widgets', 'setting_type': 'boolean', 'setting_default': 'true'},
 #======+============= PunchPlay Cache
 {'setting_id': 'punchplay.user', 'setting_type': 'string', 'setting_default': 'empty_setting'},
@@ -1613,10 +1615,10 @@ def default_settings():
 #==================== Context Menu
 {'setting_id': 'context_menu.enabled', 'setting_type': 'string',
 'setting_default': 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
-'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'},
+'mdblist_manager,mdblist_send_lists,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'},
 {'setting_id': 'context_menu.order', 'setting_type': 'string',
 'setting_default': 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
-'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'},
+'mdblist_manager,mdblist_send_lists,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,mark_watched,unmark_previous_episode,exit,refresh,reload'},
 
 
 #==================================================================================#

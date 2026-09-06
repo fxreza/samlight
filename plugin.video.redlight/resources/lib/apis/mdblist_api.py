@@ -1175,6 +1175,104 @@ def mdblist_bulk_add_to_static_list(list_id, items):
 	return (_mdbl_static_result_count(result, 'added'), _mdbl_static_result_count(result, 'existing'),
 			_mdbl_static_result_count(result, 'not_found'), None)
 
+_MDBL_FAV_LINK_SETTING = {'movie': 'mdblist.link_favorites_movie', 'tvshow': 'mdblist.link_favorites_tvshow'}
+
+def _mdbl_send_sources():
+	"""Everything that can be sent up: local personal lists, plus each half of Favourites."""
+	from caches import personal_lists_cache, favorites_cache
+	sources = []
+	for row in personal_lists_cache.personal_lists_cache.get_lists():
+		sources.append({'kind': 'personal', 'label': row['name'], 'list_name': row['name'],
+						'author': row['author'], 'total': row['total'] or 0})
+	for media_type, label in (('movie', 'Favourites: Movies'), ('tvshow', 'Favourites: TV Shows')):
+		favs = favorites_cache.favorites_cache.get_favorites(media_type)
+		sources.append({'kind': 'favorites', 'label': label, 'media_type': media_type, 'total': len(favs)})
+	return sources
+
+def _mdbl_source_items(source):
+	"""Source -> the item dicts _mdbl_bulk_payload expects."""
+	if source['kind'] == 'favorites':
+		from caches import favorites_cache
+		media_type = source['media_type']
+		return [{'media_id': i['tmdb_id'], 'type': media_type} for i in favorites_cache.favorites_cache.get_favorites(media_type)]
+	from caches import personal_lists_cache
+	return personal_lists_cache.personal_lists_cache.get_list(source['list_name'], source['author'], update_seen=False)
+
+def _mdbl_source_link(source):
+	if source['kind'] == 'favorites':
+		value = get_setting('redlight.%s' % _MDBL_FAV_LINK_SETTING[source['media_type']], 'empty_setting')
+		return None if value in (None, '', '0', 'empty_setting') else str(value)
+	from caches import personal_lists_cache
+	return personal_lists_cache.personal_lists_cache.get_mdblist_link(source['list_name'], source['author'])
+
+def _mdbl_set_source_link(source, list_id):
+	if source['kind'] == 'favorites':
+		set_setting(_MDBL_FAV_LINK_SETTING[source['media_type']], str(list_id) if list_id else 'empty_setting')
+		return
+	from caches import personal_lists_cache
+	personal_lists_cache.personal_lists_cache.set_mdblist_link(source['list_name'], source['author'], list_id)
+
+def _mdbl_pick_target(source, static_lists):
+	"""Pick or create the MDBList list this source sends to. Returns (list_id, error)."""
+	choices = [{'name': '[I]Create a new MDBList list...[/I]', 'id': None}]
+	choices += [{'name': i.get('name') or 'MDBList', 'id': i.get('id')} for i in static_lists]
+	display = [{'line1': i['name']} for i in choices]
+	chosen = kodi_utils.select_dialog(choices, items=json.dumps(display), heading='Send "%s" to' % source['label'], narrow_window='true')
+	if chosen is None: return None, None
+	if chosen['id'] is not None: return str(chosen['id']), None
+	new_name = kodi_utils.kodi_dialog().input('Name for the new MDBList list', defaultt=source['label'])
+	if not new_name: return None, None
+	return mdblist_create_static_list(new_name)
+
+def _mdbl_send_source(source, static_lists, allow_pick=True):
+	"""Send one source. Returns a one line result string."""
+	items = _mdbl_source_items(source)
+	if not items: return '%s: empty, nothing sent' % source['label']
+	list_id = _mdbl_source_link(source)
+	if list_id and not any(str(i.get('id')) == str(list_id) for i in static_lists):
+		_mdbl_set_source_link(source, None)
+		list_id = None
+	if not list_id:
+		if not allow_pick: return '%s: not linked yet' % source['label']
+		list_id, error = _mdbl_pick_target(source, static_lists)
+		if error: return '%s: %s' % (source['label'], error)
+		if not list_id: return '%s: cancelled' % source['label']
+		_mdbl_set_source_link(source, list_id)
+	added, existing, not_found, error = mdblist_bulk_add_to_static_list(list_id, items)
+	if error: return '%s: %s' % (source['label'], error)
+	line = '%s: %s added, %s already there' % (source['label'], added, existing)
+	if not_found: line += ', %s not matched' % not_found
+	return line
+
+def mdblist_send_lists(params=None):
+	"""Send local lists and Favourites up to MDBList.
+
+	Reachable from the item context menu, so it works from any widget without
+	having to be inside the local lists folder.
+	"""
+	if not settings.mdblist_user_active(): return kodi_utils.notification('MDBList account not authorised', 3000)
+	sources = _mdbl_send_sources()
+	if not sources: return kodi_utils.notification('Nothing to send', 3000)
+	static_lists = mdbl_get_static_lists(refresh=True)
+	linked = {}
+	for source in sources: linked[source['label']] = _mdbl_source_link(source)
+	rows = [{'label': '[B]Send everything already linked[/B]', 'source': None}]
+	for source in sources:
+		target = linked.get(source['label'])
+		name = next((i.get('name') for i in static_lists if str(i.get('id')) == str(target)), None) if target else None
+		status = '[COLOR lime]-> %s[/COLOR]' % name if name else '[COLOR grey]not linked[/COLOR]'
+		rows.append({'label': '%s [I](x%s)[/I]  %s' % (source['label'], source['total'], status), 'source': source})
+	display = [{'line1': i['label']} for i in rows]
+	chosen = kodi_utils.select_dialog(rows, items=json.dumps(display), heading='Send Lists to MDBList', narrow_window='true')
+	if chosen is None: return
+	if chosen['source'] is not None:
+		result = _mdbl_send_source(chosen['source'], static_lists)
+		kodi_utils.ok_dialog(heading='MDBList', text=result)
+		return kodi_utils.kodi_refresh()
+	results = [_mdbl_send_source(i, static_lists, allow_pick=False) for i in sources]
+	kodi_utils.ok_dialog(heading='Sent to MDBList', text='[CR]'.join(results), scroll=True)
+	kodi_utils.kodi_refresh()
+
 def mdblist_send_personal_list(params):
 	"""Context menu on a local personal list: send its contents up to MDBList.
 

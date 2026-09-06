@@ -62,7 +62,7 @@ def context_menu_items():
 	{'name': 'Browse Movie Set', 'value': 'browse_movie_set'}, {'name': 'Browse TV Seasons', 'value': 'browse_seasons'},
 	{'name': 'Browse Season Episodes', 'value': 'browse_episodes'}, {'name': 'Browse Recommended', 'value': 'recommended'}, {'name': 'Browse Related', 'value': 'related'},
 	{'name': 'Browse More Like This', 'value': 'more_like_this'}, {'name': 'Browse Similar', 'value': 'similar'}, {'name': 'In Trakt Lists', 'value': 'in_trakt_list'},
-	{'name': 'MDBList Manager', 'value': 'mdblist_manager'}, {'name': 'MDBList Watchlist', 'value': 'mdblist_watchlist'}, {'name': 'MDBList Library', 'value': 'mdblist_library'},
+	{'name': 'MDBList Manager', 'value': 'mdblist_manager'}, {'name': 'Send Lists to MDBList', 'value': 'mdblist_send_lists'}, {'name': 'MDBList Watchlist', 'value': 'mdblist_watchlist'}, {'name': 'MDBList Library', 'value': 'mdblist_library'},
 	{'name': 'PunchPlay Manager', 'value': 'punchplay_manager'},
 	{'name': 'Simkl Lists Manager', 'value': 'simkl_manager'}, {'name': 'Simkl Plan to Watch', 'value': 'simkl_plantowatch'},
 	{'name': 'TMDb Lists Manager', 'value': 'tmdb_manager'}, {'name': 'TMDb Watchlist', 'value': 'tmdb_watchlist'}, {'name': 'TMDb Favorites', 'value': 'tmdb_favorites'},
