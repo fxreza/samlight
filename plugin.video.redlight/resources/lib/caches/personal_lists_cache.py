@@ -3,14 +3,54 @@ from modules import kodi_utils
 from caches.base_cache import connect_database, get_timestamp
 # from modules.kodi_utils import logger
 
+# A list can be linked to an MDBList list. The link is the MDBList id, never the
+# name, so renaming either side (or a typo) cannot break or mis-target it.
+_mdblist_id_column_ready = [False]
+
+def _ensure_mdblist_id_column():
+	if _mdblist_id_column_ready[0]: return
+	# Set first: a failure here must not retry on every read.
+	_mdblist_id_column_ready[0] = True
+	try:
+		dbcon = connect_database('personal_lists_db')
+		columns = [i[1] for i in dbcon.execute('PRAGMA table_info(personal_lists)').fetchall()]
+		if 'mdblist_id' not in columns:
+			dbcon.execute('ALTER TABLE personal_lists ADD COLUMN mdblist_id text')
+	except: pass
+
 class PersonalListsCache:
 	def make_list(self, list_name, author, sort_order, description, seen='false', poster='', fanart=''):
 		try:
 			time_stamp = get_timestamp()
 			if not author: author = 'Unknown'
+			_ensure_mdblist_id_column()
 			dbcon = connect_database('personal_lists_db')
-			dbcon.execute('INSERT OR REPLACE INTO personal_lists VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+			# Columns named explicitly: the table gained mdblist_id, so a bare VALUES list
+			# would no longer line up.
+			dbcon.execute('INSERT OR REPLACE INTO personal_lists '
+						'(name, contents, total, created, sort_order, description, seen, poster, fanart, author, updated) '
+						'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 						(list_name, repr([]), 0, time_stamp, sort_order, description, seen, poster, fanart, author, time_stamp))
+			return True
+		except: return False
+
+	def get_mdblist_link(self, list_name, author):
+		"""The MDBList list id this local list pushes to, or None."""
+		try:
+			_ensure_mdblist_id_column()
+			dbcon = connect_database('personal_lists_db')
+			row = dbcon.execute('SELECT mdblist_id FROM personal_lists WHERE name=? AND author=?', (list_name, author)).fetchone()
+			if row and row[0] not in (None, '', '0'): return str(row[0])
+		except: pass
+		return None
+
+	def set_mdblist_link(self, list_name, author, mdblist_id):
+		"""Pass None to unlink."""
+		try:
+			_ensure_mdblist_id_column()
+			dbcon = connect_database('personal_lists_db')
+			dbcon.execute('UPDATE personal_lists SET mdblist_id=? WHERE name=? AND author=?',
+						(str(mdblist_id) if mdblist_id not in (None, '', '0') else None, list_name, author))
 			return True
 		except: return False
 

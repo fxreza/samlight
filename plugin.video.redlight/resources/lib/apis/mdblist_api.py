@@ -29,7 +29,7 @@ def _mdblist_token():
 		token = get_setting('redlight.mdblist.token', '0')
 	return token
 
-def call_mdblist(path, params=None, json_data=None, method=None):
+def call_mdblist(path, params=None, json_data=None, method=None, raw_error=False):
 	params = params or {}
 	token = _mdblist_token()
 	if not token or token in ('0', 'empty_setting'): return None
@@ -42,6 +42,7 @@ def call_mdblist(path, params=None, json_data=None, method=None):
 			result = response.text
 		if not response.ok:
 			kodi_utils.logger('MDBList', 'HTTP %s %s' % (response.status_code, path))
+			if raw_error: return {'_error': result, '_status': response.status_code}
 			return None
 		if isinstance(result, list):
 			result = {'items': result, 'pagination': {'has_more': response.headers.get('X-Has-More') == 'true'}}
@@ -1130,6 +1131,100 @@ def _mdbl_static_result_count(result, key):
 	block = (result or {}).get(key) or {}
 	if not isinstance(block, dict): return 0
 	return int(block.get('movies') or 0) + int(block.get('shows') or 0) + int(block.get('seasons') or 0) + int(block.get('episodes') or 0)
+
+def _mdbl_bulk_payload(items):
+	"""Local personal-list items -> MDBList's movies[]/shows[] add payload.
+
+	Items look like {'media_id': '<tmdb>', 'type': 'movie'|'tvshow', ...}.
+	"""
+	movies, shows = [], []
+	for item in items or []:
+		try: tmdb_id = int(str(item.get('media_id') or '').strip())
+		except: continue
+		if tmdb_id <= 0: continue
+		if (item.get('type') or '').lower() in ('tvshow', 'show', 'shows', 'tv', 'series'): shows.append({'tmdb': tmdb_id})
+		else: movies.append({'tmdb': tmdb_id})
+	return {'movies': movies, 'shows': shows}
+
+def mdblist_create_static_list(name, private=True):
+	"""Create a static list on MDBList. Returns (list_id, error_message)."""
+	result = call_mdblist('lists/user/add', json_data={'name': name, 'private': bool(private)}, method='post', raw_error=True)
+	if not isinstance(result, dict): return None, 'MDBList did not respond'
+	if '_error' in result:
+		body = result.get('_error')
+		detail = body.get('detail') if isinstance(body, dict) else None
+		if result.get('_status') == 403:
+			limit = body.get('limit') if isinstance(body, dict) else None
+			return None, 'MDBList static list limit reached%s' % (' (%s lists)' % limit if limit else '')
+		return None, detail or 'MDBList refused to create the list'
+	list_id = result.get('id')
+	if list_id in (None, '', 0, '0'): return None, 'MDBList did not return a list id'
+	return str(list_id), None
+
+def mdblist_bulk_add_to_static_list(list_id, items):
+	"""Add many items in ONE request. Returns (added, existing, not_found, error)."""
+	payload = _mdbl_bulk_payload(items)
+	if not payload['movies'] and not payload['shows']: return 0, 0, 0, 'Nothing in that list to send'
+	result = call_mdblist('lists/%s/items/add' % list_id, json_data=payload, method='post', raw_error=True)
+	if not isinstance(result, dict): return 0, 0, 0, 'MDBList did not respond'
+	if '_error' in result:
+		body = result.get('_error')
+		detail = body.get('detail') if isinstance(body, dict) else None
+		return 0, 0, 0, detail or 'MDBList refused the items'
+	mdblist_cache.mdblist_cache.delete('mdblist_list_contents_my_lists_%s' % list_id)
+	return (_mdbl_static_result_count(result, 'added'), _mdbl_static_result_count(result, 'existing'),
+			_mdbl_static_result_count(result, 'not_found'), None)
+
+def mdblist_send_personal_list(params):
+	"""Context menu on a local personal list: send its contents up to MDBList.
+
+	Pairing is stored as the MDBList list id against the local list, so renaming
+	either side never breaks it. Re-running tops the MDBList list up; it does not
+	delete anything there.
+	"""
+	from caches import personal_lists_cache
+	cache = personal_lists_cache.personal_lists_cache
+	list_name = params.get('list_name') or ''
+	author = params.get('author') or 'Unknown'
+	if not list_name: return kodi_utils.notify_error()
+	if not settings.mdblist_user_active(): return kodi_utils.notification('MDBList account not authorised', 3000)
+	items = cache.get_list(list_name, author, update_seen=False)
+	if not items: return kodi_utils.notification('That list is empty', 3000)
+	list_id = cache.get_mdblist_link(list_name, author)
+	static_lists = mdbl_get_static_lists(refresh=True)
+	if list_id and not any(str(i.get('id')) == str(list_id) for i in static_lists):
+		cache.set_mdblist_link(list_name, author, None)
+		list_id = None
+		kodi_utils.notification('Linked MDBList list is gone - choose again', 4000)
+	if not list_id:
+		choices = [{'name': '[I]Create a new MDBList list...[/I]', 'id': None}]
+		choices += [{'name': i.get('name') or 'MDBList', 'id': i.get('id')} for i in static_lists]
+		display = [{'line1': i['name']} for i in choices]
+		chosen = kodi_utils.select_dialog(choices, items=json.dumps(display), heading='Send "%s" to' % list_name, narrow_window='true')
+		if chosen is None: return
+		if chosen['id'] is None:
+			new_name = kodi_utils.kodi_dialog().input('Name for the new MDBList list', defaultt=list_name)
+			if not new_name: return
+			list_id, error = mdblist_create_static_list(new_name)
+			if error: return kodi_utils.ok_dialog(heading='MDBList', text=error)
+		else:
+			list_id = str(chosen['id'])
+		cache.set_mdblist_link(list_name, author, list_id)
+	added, existing, not_found, error = mdblist_bulk_add_to_static_list(list_id, items)
+	if error: return kodi_utils.ok_dialog(heading='MDBList', text=error)
+	summary = '%s added, %s already there' % (added, existing)
+	if not_found: summary += ', %s not matched' % not_found
+	kodi_utils.ok_dialog(heading='Sent "%s" to MDBList' % list_name, text=summary)
+	kodi_utils.kodi_refresh()
+
+def mdblist_unlink_personal_list(params):
+	"""Forget which MDBList list a local list sends to. Nothing on MDBList is touched."""
+	from caches import personal_lists_cache
+	list_name = params.get('list_name') or ''
+	author = params.get('author') or 'Unknown'
+	if not list_name: return kodi_utils.notify_error()
+	personal_lists_cache.personal_lists_cache.set_mdblist_link(list_name, author, None)
+	kodi_utils.notification('MDBList link cleared', 3000)
 
 def mdblist_force_refresh_list(params):
 	"""Context menu: drop one list's cached contents and reload the listing.

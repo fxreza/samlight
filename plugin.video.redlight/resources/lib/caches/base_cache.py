@@ -72,7 +72,7 @@ expires integer, unique (provider, db_type, tmdb_id, title, year, season, episod
 'CREATE TABLE IF NOT EXISTS groups_data (tmdb_id text not null unique, data text)',),
 'personal_lists_db': (
 'CREATE TABLE IF NOT EXISTS personal_lists \
-(name text, contents text, total integer, created text, sort_order integer, description text, seen text, poster text, fanart text, author text, updated text, unique (name, author))',),
+(name text, contents text, total integer, created text, sort_order integer, description text, seen text, poster text, fanart text, author text, updated text, mdblist_id text, unique (name, author))',),
 'tmdb_lists_db': (
 'CREATE TABLE IF NOT EXISTS tmdb_lists (id text unique, data text, expires integer)',),
 'random_widgets_db': (
