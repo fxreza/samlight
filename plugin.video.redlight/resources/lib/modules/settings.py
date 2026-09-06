@@ -35,6 +35,11 @@ def simkl_user_active():
 	token = settings_cache.read_db_value('simkl.token')
 	return user not in (None, 'empty_setting', '') and token not in (None, '0', '', 'empty_setting')
 
+def remove_favorite_when_watched():
+	"""Marking something watched drops it from Favourites, keeping that shelf as
+	'not seen yet'. Personal lists are never touched by it."""
+	return get_setting('redlight.favorites.remove_when_watched', 'true') == 'true'
+
 def provider_enabled(name):
 	"""Master switch per meta provider. Off means hidden everywhere and no background work.
 
@@ -1353,7 +1358,7 @@ def rescrape_action_value(action, default='0'):
 	return int(get_setting('redlight.rescrape.%s' % action, default))
 
 def cm_enabled():
-	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
+	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,random_continual,recommended,related,more_like_this,similar,in_trakt_list,' \
 				'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,tmdb_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'
 	setting = get_setting('redlight.context_menu.enabled', default)
 	if setting in ('', None, 'noop', '[]'): return default.split(',')
@@ -1405,6 +1410,28 @@ def migrate_external_scraper_context_menu_for_upgrade(had_existing_settings):
 		parts = [p for p in raw.split(',') if p]
 		if item in parts: continue
 		if 'playback_options' in parts: parts.insert(parts.index('playback_options') + 1, item)
+		else: parts.append(item)
+		set_setting(setting_key, ','.join(parts))
+		changed = True
+	return changed
+
+def migrate_random_continual_cm_for_upgrade(had_existing_settings):
+	"""Retro-fit the Random Play (Continual) entry onto an existing saved menu.
+
+	A stored context_menu.enabled beats the shipped default, so a new entry stays
+	invisible without this. Anchored after browse_episodes, clear of the manager run
+	that _normalize_cm_list_order forces contiguous.
+	"""
+	if get_setting('redlight.random_continual.cm_migrated', 'false') == 'true': return False
+	set_setting('random_continual.cm_migrated', 'true')
+	if not had_existing_settings: return False
+	item, changed = 'random_continual', False
+	for setting_key in ('context_menu.enabled', 'context_menu.order'):
+		raw = get_setting('redlight.%s' % setting_key, '')
+		if raw in ('', None, 'noop', '[]'): continue
+		parts = [p for p in raw.split(',') if p]
+		if item in parts: continue
+		if 'browse_episodes' in parts: parts.insert(parts.index('browse_episodes') + 1, item)
 		else: parts.append(item)
 		set_setting(setting_key, ','.join(parts))
 		changed = True
@@ -1516,7 +1543,7 @@ def migrate_cm_manager_order_for_upgrade():
 	return get_setting('redlight.context_menu.order', '') != before
 
 def cm_current_order():
-	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,recommended,related,more_like_this,similar,in_trakt_list,' \
+	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,random_continual,recommended,related,more_like_this,similar,in_trakt_list,' \
 				'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,tmdb_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'
 	setting = get_setting('redlight.context_menu.order', default)
 	if setting in ('', None, 'noop', '[]'): order = default.split(',')

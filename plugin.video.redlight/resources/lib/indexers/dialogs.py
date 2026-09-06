@@ -821,6 +821,27 @@ def keywords_choice(params):
 	kwargs = {'items': json.dumps(list_items)}
 	return kodi_utils.select_dialog([i['id'] for i in keywords], **kwargs)
 
+def random_continual_choice(params):
+	"""Context menu on a TV show: start continual random play right away.
+
+	Same engine as Options > Random > Continual Random Play, without the two menus
+	in front of it. Named ...choice so the router dispatches it here.
+	"""
+	tmdb_id = params.get('tmdb_id')
+	if not tmdb_id: return kodi_utils.notify_error()
+	meta = params.get('meta')
+	if not meta:
+		from modules import metadata
+		from modules.utils import get_datetime
+		kodi_utils.show_busy_dialog()
+		try: meta = metadata.tvshow_meta('tmdb_id', tmdb_id, settings.tmdb_api_key(), settings.mpaa_region(), get_datetime())
+		except: meta = None
+		finally: kodi_utils.hide_busy_dialog()
+	if not meta: return kodi_utils.notify_error()
+	kodi_utils.close_all_dialog()
+	from modules.episode_tools import EpisodeTools
+	return EpisodeTools(meta).play_random_continual()
+
 def random_choice(params):
 	meta, poster, return_choice = params.get('meta'), params.get('poster'), params.get('return_choice', 'false')
 	meta = params.get('meta', None)	

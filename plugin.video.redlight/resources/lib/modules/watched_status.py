@@ -482,6 +482,25 @@ def set_bookmark(params, remote=True):
 		else: refresh_container(refresh)
 	except: pass
 
+def _drop_from_favorites(action, media_type, tmdb_id):
+	"""Marking something watched removes it from Favourites.
+
+	Keyed on the ACT of marking, not on watched state: adding an already watched
+	title to Favourites leaves it there until it is marked watched again. Only
+	Favourites is affected - personal lists are left alone.
+	"""
+	try:
+		if action != 'watched' or not tmdb_id: return
+		if not settings.remove_favorite_when_watched(): return
+		from caches.favorites_cache import favorites_cache
+		if not any(i['tmdb_id'] == str(tmdb_id) for i in favorites_cache.get_favorites(media_type)): return
+		if not favorites_cache.delete_favourite(media_type, str(tmdb_id), ''): return
+		from indexers.tmdb_lists import tmdb_sync_after_change
+		tmdb_sync_after_change('favorites', media_type=media_type)
+	except Exception as e:
+		from modules.kodi_utils import logger
+		logger('Favourites', 'auto remove skipped: %s' % e)
+
 def mark_movie(params):
 	action, media_type = params.get('action'), 'movie'
 	refresh, from_playback = params.get('refresh', 'true') == 'true', params.get('from_playback', 'false') == 'true'
@@ -504,6 +523,7 @@ def mark_movie(params):
 			return notification('Error')
 	_arm_provider_list_sync_skip(watched_indicators)
 	watched_status_mark(watched_indicators, media_type, tmdb_id, action, title=title)
+	_drop_from_favorites(action, 'movie', tmdb_id)
 	_schedule_playback_widget_refresh(from_playback)
 	refresh_container(refresh)
 	if not from_playback: notification('Success')
@@ -546,6 +566,7 @@ def mark_tvshow(params):
 			insert_append(make_batch_insert(action, 'episode', tmdb_id, season_number, ep_number, last_played, title))
 	_arm_provider_list_sync_skip(watched_indicators)
 	batch_watched_status_mark(watched_indicators, insert_list, action)
+	_drop_from_favorites(action, 'tvshow', tmdb_id)
 	progress_backround.close()
 	refresh_container()
 	notification('Success')
@@ -586,6 +607,7 @@ def mark_season(params):
 		insert_append(make_batch_insert(action, 'episode', tmdb_id, season_number, ep_number, last_played, title))
 	_arm_provider_list_sync_skip(watched_indicators)
 	batch_watched_status_mark(watched_indicators, insert_list, action)
+	_drop_from_favorites(action, 'tvshow', tmdb_id)
 	progress_backround.close()
 	refresh_container()
 	notification('Success')
@@ -619,6 +641,8 @@ def mark_episode(params):
 			return notification('Error')
 	_arm_provider_list_sync_skip(watched_indicators)
 	watched_status_mark(watched_indicators, media_type, tmdb_id, action, season, episode, title)
+	# One episode watched is enough: the show leaves Favourites.
+	_drop_from_favorites(action, 'tvshow', tmdb_id)
 	update_hidden_progress(tmdb_id)
 	_schedule_playback_widget_refresh(from_playback)
 	refresh_container(refresh)

@@ -59,7 +59,7 @@ def context_menu_items():
 	{'name': 'Extras', 'value': 'extras'}, {'name': 'Options', 'value': 'options'}, {'name': 'Play Options', 'value': 'playback_options'},
 	{'name': 'Select Source', 'value': 'select_source'}, {'name': 'Rescrape & Select Source', 'value': 'rescrape_select_source'},
 	{'name': 'External Scraper Settings', 'value': 'external_scraper_settings'},
-	{'name': 'Browse Movie Set', 'value': 'browse_movie_set'}, {'name': 'Browse TV Seasons', 'value': 'browse_seasons'},
+	{'name': 'Browse Movie Set', 'value': 'browse_movie_set'}, {'name': 'Browse TV Seasons', 'value': 'browse_seasons'}, {'name': 'Random Play (Continual)', 'value': 'random_continual'},
 	{'name': 'Browse Season Episodes', 'value': 'browse_episodes'}, {'name': 'Browse Recommended', 'value': 'recommended'}, {'name': 'Browse Related', 'value': 'related'},
 	{'name': 'Browse More Like This', 'value': 'more_like_this'}, {'name': 'Browse Similar', 'value': 'similar'}, {'name': 'In Trakt Lists', 'value': 'in_trakt_list'},
 	{'name': 'MDBList Manager', 'value': 'mdblist_manager'}, {'name': 'MDBList Watchlist', 'value': 'mdblist_watchlist'}, {'name': 'MDBList Library', 'value': 'mdblist_library'},

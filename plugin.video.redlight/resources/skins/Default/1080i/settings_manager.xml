@@ -1693,6 +1693,13 @@
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=mdblist.mdblist_revoke_authentication)</onclick>
                       </item>
                       <item>
+                          <property name="setting_label">Remove from Favorites When Watched</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.favorites.remove_when_watched)]</property>
+                          <property name="setting_description">Marking a movie watched, or any episode of a show watched, removes it from Favorites. Adding an already watched title to Favorites leaves it there until you mark it watched again. Personal lists are never affected.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=favorites.remove_when_watched)</onclick>
+                      </item>
+                      <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <property name="setting_label">    - Enable MDBList</property>
                           <property name="setting_type">boolean</property>
