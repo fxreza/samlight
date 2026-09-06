@@ -354,7 +354,9 @@ class TMDbListSyncMonitor:
 		while not monitor.abortRequested():
 			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
 			try:
-				due = startup_run or _tmdb_sync_due(tmdb_list_sync_hours())
+				# A box that crashes and relaunches several times a day would otherwise sync
+				# on every relaunch. Collapse a restart storm into one run.
+				due = (startup_run and not _tmdb_synced_within(30)) or _tmdb_sync_due(tmdb_list_sync_hours())
 				startup_run = False
 				if tmdb_list_sync_enabled() and tmdblist_user_active() and due \
 						and not kodi_utils.service_shutting_down(monitor):
@@ -371,6 +373,14 @@ class TMDbListSyncMonitor:
 		try: del player
 		except: pass
 		return kodi_utils.logger('Red Light', 'TMDbListSyncMonitor Service Finished')
+
+def _tmdb_synced_within(minutes):
+	"""True when a sync already ran in the last `minutes`, so a relaunch can skip its own."""
+	from caches.settings_cache import get_setting
+	last = get_setting('redlight.tmdb.list_sync_last_run', 'empty_setting')
+	if last in (None, '', 'empty_setting'): return False
+	try: return (time() - int(last)) < (minutes * 60)
+	except: return False
 
 def _tmdb_sync_due(interval_hours):
 	from caches.settings_cache import get_setting
