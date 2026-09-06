@@ -627,23 +627,29 @@ def _tmdb_mirror(local, remote, snapshot):
 	return (local | remote) - removed_local - removed_remote
 
 def _tmdb_sync_source(source, user_lists, allow_pick=True):
-	"""Mirror one local list against its TMDb list. Returns a one line result."""
+	"""Mirror one local list against its TMDb list.
+
+	Returns (message, changed). `changed` is what decides whether widgets get
+	refreshed - most runs find nothing to do, and a pointless refresh is the one
+	cost the user actually feels. Pass user_lists=None to skip validating that the
+	linked list still exists, which saves a request on the open-a-list path.
+	"""
 	from caches import list_sync_cache
 	list_id = _tmdb_source_link(source)
-	if list_id and not any(str(i.get('id')) == str(list_id) for i in user_lists):
+	if list_id and user_lists is not None and not any(str(i.get('id')) == str(list_id) for i in user_lists):
 		_tmdb_set_source_link(source, None)
 		list_sync_cache.clear_snapshot(_TMDB_SYNC_SERVICE, source['key'])
 		list_id = None
 	if not list_id:
-		if not allow_pick: return '%s: not linked yet' % source['label']
+		if not allow_pick: return '%s: not linked yet' % source['label'], False
 		list_id, cancelled = _tmdb_pick_target(source, user_lists)
-		if cancelled: return '%s: cancelled' % source['label']
-		if not list_id: return '%s: could not create the list' % source['label']
+		if cancelled: return '%s: cancelled' % source['label'], False
+		if not list_id: return '%s: could not create the list' % source['label'], False
 		_tmdb_set_source_link(source, list_id)
 		list_sync_cache.clear_snapshot(_TMDB_SYNC_SERVICE, source['key'])
 	local = _tmdb_local_members(source)
 	remote, titles = _tmdb_remote_members(list_id)
-	if remote is None: return '%s: could not read the TMDb list, skipped' % source['label']
+	if remote is None: return '%s: could not read the TMDb list, skipped' % source['label'], False
 	snapshot = list_sync_cache.get_snapshot(_TMDB_SYNC_SERVICE, source['key'])
 	final = _tmdb_mirror(local, remote, snapshot)
 	to_add_remote = final - remote
@@ -653,20 +659,52 @@ def _tmdb_sync_source(source, user_lists, allow_pick=True):
 		pushed = add_to_tmdb_list(list_id, {'items': _tmdb_payload(to_add_remote)}, notify=False)
 	if pushed and to_remove_remote:
 		pushed = remove_from_tmdb_list(list_id, {'items': _tmdb_payload(to_remove_remote)}, list_name=source['label'])
-	if not pushed: return '%s: TMDb rejected the change, nothing saved' % source['label']
+	if not pushed: return '%s: TMDb rejected the change, nothing saved' % source['label'], False
 	if final != local: _tmdb_write_local(source, final, titles)
 	tmdb_lists_cache.clear_list(list_id)
 	tmdb_lists_cache.clear_all_lists()
 	list_sync_cache.set_snapshot(_TMDB_SYNC_SERVICE, source['key'], list_id, final)
 	up, down = len(to_add_remote), len(final - local)
 	gone_up, gone_down = len(to_remove_remote), len(local - final)
-	if not any((up, down, gone_up, gone_down)): return '%s: already in step (%s)' % (source['label'], len(final))
+	if not any((up, down, gone_up, gone_down)): return '%s: already in step (%s)' % (source['label'], len(final)), False
 	bits = []
 	if up: bits.append('%s up' % up)
 	if down: bits.append('%s down' % down)
 	if gone_up: bits.append('%s removed on TMDb' % gone_up)
 	if gone_down: bits.append('%s removed here' % gone_down)
-	return '%s: %s' % (source['label'], ', '.join(bits))
+	return '%s: %s' % (source['label'], ', '.join(bits)), True
+
+_TMDB_OPEN_SYNC_COOLDOWN = 300
+
+def tmdb_sync_on_open(kind, list_name=None, author=None, media_type=None):
+	"""Sync just the list about to be shown, so you are looking at current data.
+
+	Deliberately cheap and quiet: one list only, no request to enumerate your TMDb
+	lists, no widget refresh (the listing is about to be drawn anyway), and a
+	cooldown so walking in and out of a list does not re-sync each time. Any failure
+	is swallowed - a sync problem must never stop a list from opening.
+	"""
+	try:
+		if get_setting('redlight.tmdb.list_sync_on_open', 'true') != 'true': return False
+		# Never on the widget path. This runs while Kodi waits for the listing, and a slow
+		# network must not hold up the home screen. Inside the addon a brief wait is fine.
+		if kodi_utils.external(): return False
+		if not tmdblist_user_active(): return False
+		from caches import list_sync_cache
+		if kind == 'favorites':
+			source = {'kind': 'favorites', 'label': 'Favourites', 'media_type': media_type,
+					'total': 0, 'key': 'favorites:%s' % media_type}
+		else:
+			source = {'kind': 'personal', 'label': list_name, 'list_name': list_name,
+					'author': author or 'Unknown', 'total': 0, 'key': 'personal:%s|%s' % (list_name, author or 'Unknown')}
+		if not _tmdb_source_link(source): return False
+		last = list_sync_cache.last_synced(_TMDB_SYNC_SERVICE, source['key'])
+		if last and (time.time() - last) < _TMDB_OPEN_SYNC_COOLDOWN: return False
+		_tmdb_sync_source(source, None, allow_pick=False)
+		return True
+	except Exception as e:
+		kodi_utils.logger('TMDb Sync', 'on open skipped: %s' % e)
+		return False
 
 def tmdb_sync_lists(params=None, silent=False):
 	"""Two way sync between the local lists and their TMDb twins.
@@ -686,8 +724,13 @@ def tmdb_sync_lists(params=None, silent=False):
 	if silent:
 		linked = [i for i in sources if _tmdb_source_link(i)]
 		if not linked: return 'nothing linked'
-		for source in linked: _tmdb_sync_source(source, user_lists, allow_pick=False)
-		kodi_utils.kodi_refresh()
+		changed = False
+		for source in linked:
+			_, source_changed = _tmdb_sync_source(source, user_lists, allow_pick=False)
+			changed = changed or source_changed
+		# Only redraw when something actually moved: an unconditional refresh every run
+		# is the one cost that shows up on screen.
+		if changed: kodi_utils.kodi_refresh()
 		return 'success'
 	linked_count = len([i for i in sources if _tmdb_source_link(i)])
 	rows = []
@@ -703,12 +746,12 @@ def tmdb_sync_lists(params=None, silent=False):
 	if chosen is None: return
 	kodi_utils.show_busy_dialog()
 	try:
-		if chosen['source'] is not None: results = [_tmdb_sync_source(chosen['source'], user_lists)]
-		else: results = [_tmdb_sync_source(i, user_lists, allow_pick=False) for i in sources if _tmdb_source_link(i)]
+		if chosen['source'] is not None: outcomes = [_tmdb_sync_source(chosen['source'], user_lists)]
+		else: outcomes = [_tmdb_sync_source(i, user_lists, allow_pick=False) for i in sources if _tmdb_source_link(i)]
 	finally:
 		kodi_utils.hide_busy_dialog()
-	kodi_utils.ok_dialog(heading='TMDb Sync', text='[CR]'.join(results), scroll=True)
-	kodi_utils.kodi_refresh()
+	kodi_utils.ok_dialog(heading='TMDb Sync', text='[CR]'.join(i[0] for i in outcomes), scroll=True)
+	if any(i[1] for i in outcomes): kodi_utils.kodi_refresh()
 	return 'success'
 
 def tmdb_send_lists(params=None):

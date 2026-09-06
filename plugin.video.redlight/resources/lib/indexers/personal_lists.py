@@ -115,7 +115,13 @@ def build_personal_list(params):
 						'paginate_start': paginate_start}
 		if page_no == 1 and not is_external: kodi_utils.set_property('redlight.exit_params', kodi_utils.list_collection_exit_params(params))
 		if use_result: result = params.get('result', [])
-		else: result = get_personal_list(params)
+		else:
+			# Freshen this one list from TMDb before drawing it. Cheap, cooldown limited,
+			# and skipped entirely when the list is not linked.
+			if page_no == 1:
+				from indexers.tmdb_lists import tmdb_sync_on_open
+				tmdb_sync_on_open('personal', list_name=list_name, author=author)
+			result = get_personal_list(params)
 		process_list, total_pages, paginate_start = _paginate_list(result, page_no, paginate_start)
 		movie_list = {'list': [(c, i['media_id']) for c, i in enumerate(process_list) if i['type'] == 'movie'], 'custom_order': 'true'}
 		tvshow_list = {'list': [(c, i['media_id']) for c, i in enumerate(process_list) if i['type'] == 'tvshow'], 'custom_order': 'true'}

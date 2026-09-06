@@ -348,10 +348,15 @@ class TMDbListSyncMonitor:
 		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
 		# Well clear of the boot storm: this one talks to TMDb and writes to local lists.
 		wait_for_abort(240)
+		# One sync per boot regardless of the timer: the common case is things added
+		# elsewhere while this box was switched off.
+		startup_run = True
 		while not monitor.abortRequested():
 			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
 			try:
-				if tmdb_list_sync_enabled() and tmdblist_user_active() and _tmdb_sync_due(tmdb_list_sync_hours()) \
+				due = startup_run or _tmdb_sync_due(tmdb_list_sync_hours())
+				startup_run = False
+				if tmdb_list_sync_enabled() and tmdblist_user_active() and due \
 						and not kodi_utils.service_shutting_down(monitor):
 					from indexers.tmdb_lists import tmdb_sync_lists
 					status = tmdb_sync_lists(silent=True)

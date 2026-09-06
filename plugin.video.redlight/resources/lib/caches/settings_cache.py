@@ -1671,6 +1671,7 @@ def default_settings():
 {'setting_id': 'tmdb.token', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'tmdb.list_sync_enabled', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'tmdb.list_sync_hours', 'setting_type': 'action', 'setting_default': '24', 'min_value': '1', 'max_value': '168'},
+{'setting_id': 'tmdb.list_sync_on_open', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'tmdb.list_sync_last_run', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'tmdb.link_favorites_movie', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'tmdb.link_favorites_tvshow', 'setting_type': 'string', 'setting_default': 'empty_setting'},
