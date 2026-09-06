@@ -1,21 +1,44 @@
 # -*- coding: utf-8 -*-
+import time
 from threading import Thread
 from caches.base_cache import connect_database
 from modules import kodi_utils
 
+# Rows written before this column existed, and every row that must never go stale
+# (activities, watched, progress), store expires = 0 and are returned forever.
+_expires_column_ready = [False]
+
+def _ensure_expires_column():
+	if _expires_column_ready[0]: return
+	# Set first: a failure here must not retry on every single cache read.
+	_expires_column_ready[0] = True
+	try:
+		dbcon = connect_database('mdblist_db')
+		columns = [i[1] for i in dbcon.execute('PRAGMA table_info(mdblist_data)').fetchall()]
+		if 'expires' not in columns:
+			dbcon.execute('ALTER TABLE mdblist_data ADD COLUMN expires integer')
+	except: pass
+
 class MdblistCache:
-	def get(self, string):
+	def get(self, string, allow_stale=False):
 		try:
+			_ensure_expires_column()
 			dbcon = connect_database('mdblist_db')
-			cache_data = dbcon.execute('SELECT data FROM mdblist_data WHERE id = ?', (string,)).fetchone()
-			if cache_data: return eval(cache_data[0])
+			cache_data = dbcon.execute('SELECT data, expires FROM mdblist_data WHERE id = ?', (string,)).fetchone()
+			if cache_data:
+				expires = cache_data[1] or 0
+				if allow_stale or not expires or int(expires) > int(time.time()):
+					return eval(cache_data[0])
 		except: pass
 		return None
 
-	def set(self, string, data):
+	def set(self, string, data, expiration=0):
+		"""expiration is in MINUTES. 0 means never expire."""
 		try:
+			_ensure_expires_column()
 			dbcon = connect_database('mdblist_db')
-			dbcon.execute('INSERT OR REPLACE INTO mdblist_data (id, data) VALUES (?, ?)', (string, repr(data)))
+			expires = int(time.time()) + int(expiration) * 60 if expiration else 0
+			dbcon.execute('INSERT OR REPLACE INTO mdblist_data (id, data, expires) VALUES (?, ?, ?)', (string, repr(data), expires))
 		except: return None
 
 	def delete(self, string):
@@ -55,13 +78,18 @@ class MdblistWatched:
 
 mdblist_watched_cache = MdblistWatched()
 
-def cache_mdblist_object(function, string, url):
+def cache_mdblist_object(function, string, url, expiration=0):
+	"""expiration is in MINUTES. 0 keeps the old behaviour: cache until something clears it."""
 	try:
 		cached = mdblist_cache.get(string)
 		if cached is not None: return cached
 		result = function(url)
-		if result is not None: mdblist_cache.set(string, result)
-		return result
+		if result is not None:
+			mdblist_cache.set(string, result, expiration)
+			return result
+		# Refresh failed (MDBList down, no network, timeout). Keep serving the copy we
+		# already have rather than emptying a widget - never worse than before the refresh.
+		return mdblist_cache.get(string, allow_stale=True)
 	except: return None
 
 def reset_activity(latest_activities):

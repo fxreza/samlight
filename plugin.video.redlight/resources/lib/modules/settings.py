@@ -71,6 +71,18 @@ def mdblist_sync_interval():
 	except: interval = 60
 	return interval, interval * 60
 
+def mdblist_list_refresh():
+	"""Minutes a cached MDBList list stays good for before it is refetched.
+
+	MDBList never reports that a list's contents changed - `sync/last_activities`
+	only tracks the account's own actions - so lists owned by other people would
+	otherwise stay frozen forever. 0 disables the timer.
+	"""
+	setting = get_setting('redlight.mdblist.list_refresh', '60')
+	try: interval = int(setting)
+	except: interval = 60
+	return max(0, interval)
+
 def cloud_backup_enabled():
 	return get_setting('redlight.cloud_backup.enabled', 'false') == 'true'
 

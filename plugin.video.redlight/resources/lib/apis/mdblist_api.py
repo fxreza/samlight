@@ -953,20 +953,20 @@ def mdbl_get_lists(list_type, refresh=False):
 	else: string, url = 'mdblist_my_lists', 'lists/user'
 	if refresh:
 		mdblist_cache.mdblist_cache.delete(string)
-	result = mdblist_cache.cache_mdblist_object(call_mdblist, string, url)
+	result = mdblist_cache.cache_mdblist_object(call_mdblist, string, url, settings.mdblist_list_refresh())
 	lists = _mdbl_normalize_list_response(result)
 	if not lists and isinstance(result, dict):
 		lists = result.get('items') or []
 	return _mdbl_expand_list_entries(lists)
 
 def mdbl_get_liked_lists(media_type=None):
-	result = mdblist_cache.cache_mdblist_object(call_mdblist, 'mdblist_liked_lists', 'lists/liked')
+	result = mdblist_cache.cache_mdblist_object(call_mdblist, 'mdblist_liked_lists', 'lists/liked', settings.mdblist_list_refresh())
 	lists = _mdbl_expand_list_entries(_mdbl_normalize_list_response(result))
 	if not media_type: return lists
 	return [i for i in lists if _mdbl_list_matches_media_type(i, media_type)]
 
 def mdbl_top_lists():
-	result = mdblist_cache.cache_mdblist_object(call_mdblist, 'mdblist_top_lists', 'lists/top')
+	result = mdblist_cache.cache_mdblist_object(call_mdblist, 'mdblist_top_lists', 'lists/top', settings.mdblist_list_refresh())
 	lists = _mdbl_normalize_list_response(result)
 	if not lists and isinstance(result, dict):
 		lists = result.get('items') or []
@@ -1051,7 +1051,7 @@ def get_mdbl_list_payload(list_type, list_id):
 	string = 'mdblist_list_contents_%s_%s' % (list_type, list_id)
 	if list_type == 'external': url = 'external/lists/%s/items?unified=true' % list_id
 	else: url = 'lists/%s/items?unified=true' % list_id
-	result = mdblist_cache.cache_mdblist_object(_get_mdbl_paginated_list, string, url)
+	result = mdblist_cache.cache_mdblist_object(_get_mdbl_paginated_list, string, url, settings.mdblist_list_refresh())
 	return result if isinstance(result, dict) else {}
 
 def get_mdbl_list_contents(list_type, list_id):
@@ -1130,6 +1130,19 @@ def _mdbl_static_result_count(result, key):
 	block = (result or {}).get(key) or {}
 	if not isinstance(block, dict): return 0
 	return int(block.get('movies') or 0) + int(block.get('shows') or 0) + int(block.get('seasons') or 0) + int(block.get('episodes') or 0)
+
+def mdblist_force_refresh_list(params):
+	"""Context menu: drop one list's cached contents and reload the listing.
+
+	For when a list was changed on mdblist.com and it is wanted on screen now,
+	rather than at the next scheduled refresh.
+	"""
+	list_id = params.get('list_id')
+	list_type = params.get('list_type') or 'my_lists'
+	if list_id in (None, '', 0, '0'): return kodi_utils.notify_error()
+	mdblist_cache.mdblist_cache.delete('mdblist_list_contents_%s_%s' % (list_type, list_id))
+	kodi_utils.notification('MDBList List Refreshed', 3000)
+	kodi_utils.kodi_refresh()
 
 def _mdbl_clear_static_list_cache(list_id):
 	mdblist_cache.mdblist_cache.delete('mdblist_list_contents_my_lists_%s' % list_id)

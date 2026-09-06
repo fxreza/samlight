@@ -92,6 +92,9 @@ def get_mdbl_lists(params):
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})
 				info_tag = listitem.getVideoInfoTag(True)
 				info_tag.setPlot(_mdbl_folder_plot(item))
+				cm = [('[B]Force Refresh This List[/B]', 'RunPlugin(%s)' % build_url(
+					{'mode': 'mdblist.mdblist_force_refresh_list', 'list_id': list_id, 'list_type': item_list_type}))]
+				listitem.addContextMenuItems(cm)
 				yield (url, listitem, True)
 			except: pass
 	handle = int(sys.argv[1])
@@ -133,6 +136,9 @@ def get_mdbl_liked_lists(params):
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})
 				info_tag = listitem.getVideoInfoTag(True)
 				info_tag.setPlot(_mdbl_folder_plot(item, user))
+				cm = [('[B]Force Refresh This List[/B]', 'RunPlugin(%s)' % build_url(
+					{'mode': 'mdblist.mdblist_force_refresh_list', 'list_id': list_id, 'list_type': 'liked_lists'}))]
+				listitem.addContextMenuItems(cm)
 				yield (url, listitem, True)
 			except: pass
 	handle = int(sys.argv[1])
@@ -168,6 +174,9 @@ def get_mdbl_top_lists(params):
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})
 				info_tag = listitem.getVideoInfoTag(True)
 				info_tag.setPlot(_mdbl_folder_plot(item, user))
+				cm = [('[B]Force Refresh This List[/B]', 'RunPlugin(%s)' % build_url(
+					{'mode': 'mdblist.mdblist_force_refresh_list', 'list_id': list_id, 'list_type': 'user_lists'}))]
+				listitem.addContextMenuItems(cm)
 				yield (url, listitem, True)
 			except: pass
 	handle = int(sys.argv[1])
@@ -240,6 +249,8 @@ def search_mdbl_lists(params):
 					display = '[COLOR magenta][I]%s[/I][/COLOR] | [I](x%s) - %s[/I]' % (name, count, user)
 				url = build_url(_mdbl_list_open_params(item, 'user_lists'))
 				cm = [('[B]Add to Shortcut Folder[/B]', 'RunPlugin(%s)' % build_url({'mode': 'menu_editor.shortcut_folder_add_known', 'url': url}))]
+				cm.append(('[B]Force Refresh This List[/B]', 'RunPlugin(%s)' % build_url(
+					{'mode': 'mdblist.mdblist_force_refresh_list', 'list_id': list_id, 'list_type': 'user_lists'})))
 				listitem = kodi_utils.make_listitem()
 				listitem.setLabel(display)
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})

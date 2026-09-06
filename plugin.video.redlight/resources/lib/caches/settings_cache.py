@@ -1478,6 +1478,7 @@ def default_settings():
 {'setting_id': 'mdblist.token', 'setting_type': 'string', 'setting_default': '0'},
 {'setting_id': 'mdblist.refresh', 'setting_type': 'string', 'setting_default': '0'},
 {'setting_id': 'mdblist.sync_interval', 'setting_type': 'action', 'setting_default': '60', 'min_value': '5', 'max_value': '600'},
+{'setting_id': 'mdblist.list_refresh', 'setting_type': 'action', 'setting_default': '60', 'min_value': '5', 'max_value': '1440'},
 {'setting_id': 'mdblist.refresh_widgets', 'setting_type': 'boolean', 'setting_default': 'true'},
 #======+============= PunchPlay Cache
 {'setting_id': 'punchplay.user', 'setting_type': 'string', 'setting_default': 'empty_setting'},

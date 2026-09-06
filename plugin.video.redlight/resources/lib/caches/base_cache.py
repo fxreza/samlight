@@ -38,7 +38,7 @@ last_played text, resume_id integer, title text, unique (db_type, media_id, seas
 last_played text, resume_id integer, title text, unique (db_type, media_id, season, episode))',
 'CREATE TABLE IF NOT EXISTS watched_status (db_type text not null, media_id text not null, status text, unique (db_type, media_id))'),
 'mdblist_db': (
-'CREATE TABLE IF NOT EXISTS mdblist_data (id text unique, data text)',
+'CREATE TABLE IF NOT EXISTS mdblist_data (id text unique, data text, expires integer)',
 'CREATE TABLE IF NOT EXISTS watched \
 (db_type text not null, media_id text not null, season integer, episode integer, last_played text, title text, unique (db_type, media_id, season, episode))',
 'CREATE TABLE IF NOT EXISTS progress \

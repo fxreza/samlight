@@ -1704,6 +1704,15 @@
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
+                          <property name="setting_label">    - List Refresh (mins)</property>
+                          <property name="setting_type">numeric</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.mdblist.list_refresh)]</property>
+                          <property name="setting_description">How long a fetched MDBList list is kept before Red Light asks MDBList for it again. MDBList never reports that a list's contents changed, so without this a list someone else updates would stay frozen. Lower means fresher and more API requests.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_numeric&amp;setting_id=mdblist.list_refresh)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
+                          <visible>!String.IsEqual(Window(10000).Property(redlight.mdblist.user),empty_setting)</visible>
                           <property name="setting_label">    - Refresh Widgets After Sync</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.mdblist.refresh_widgets)]</property>
