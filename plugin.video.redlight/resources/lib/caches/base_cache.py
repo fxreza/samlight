@@ -53,6 +53,8 @@ last_played text, resume_id integer, title text, unique (db_type, media_id, seas
 (db_type text not null, media_id text not null, season integer, episode integer, resume_point text, curr_time text, \
 last_played text, resume_id integer, title text, unique (db_type, media_id, season, episode))',
 'CREATE TABLE IF NOT EXISTS watched_status (db_type text not null, media_id text not null, status text, unique (db_type, media_id))'),
+'list_sync_db': (
+'CREATE TABLE IF NOT EXISTS list_sync (service text not null, source_key text not null, list_id text, snapshot text, updated text, unique (service, source_key))',),
 'maincache_db': (
 'CREATE TABLE IF NOT EXISTS maincache (id text unique, data text, expires integer)',),
 'metacache_db': (
@@ -86,7 +88,7 @@ def locations():
 'navigator_db': 'navigator.db', 'watched_db': 'watched.db', 'favorites_db': 'favourites.db', 'settings_db': 'settings.db', 'trakt_db': 'traktcache.db', 'simkl_db': 'simklcache.db', 'mdblist_db': 'mdblistcache.db', 'punchplay_db': 'punchplaycache.db',
 'maincache_db': 'maincache.db', 'metacache_db': 'metacache.db', 'debridcache_db': 'debridcache.db', 'lists_db': 'lists.db', 'tmdb_lists_db': 'tmdb_lists.db',
 'discover_db': 'discover.db', 'external_db': 'external.db', 'episode_groups_db': 'episode_groups.db', 'personal_lists_db': 'personal_lists.db',
-'random_widgets_db': 'random_widgets.db', 'list_sort_db': 'list_sort.db'
+'random_widgets_db': 'random_widgets.db', 'list_sort_db': 'list_sort.db', 'list_sync_db': 'list_sync.db'
 			}
 
 def database_locations(database_name):

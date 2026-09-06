@@ -2,6 +2,7 @@
 import os
 import sys
 import json
+import time
 from random import shuffle
 from threading import Thread
 from urllib.parse import unquote
@@ -497,21 +498,24 @@ def process_trakt_list(chosen_list):
 	return new_contents
 
 _TMDB_FAV_LINK_SETTING = {'movie': 'tmdb.link_favorites_movie', 'tvshow': 'tmdb.link_favorites_tvshow'}
+_TMDB_SYNC_SERVICE = 'tmdb'
 
 def _tmdb_send_sources():
-	"""Everything sendable: local personal lists, plus each half of Favourites."""
+	"""Everything syncable: local personal lists, plus each half of Favourites."""
 	from caches import personal_lists_cache, favorites_cache
 	sources = []
 	for row in personal_lists_cache.personal_lists_cache.get_lists():
 		sources.append({'kind': 'personal', 'label': row['name'], 'list_name': row['name'],
-						'author': row['author'], 'total': row['total'] or 0})
+						'author': row['author'], 'total': row['total'] or 0,
+						'key': 'personal:%s|%s' % (row['name'], row['author'])})
 	for media_type, label in (('movie', 'Favourites: Movies'), ('tvshow', 'Favourites: TV Shows')):
 		favs = favorites_cache.favorites_cache.get_favorites(media_type)
-		sources.append({'kind': 'favorites', 'label': label, 'media_type': media_type, 'total': len(favs)})
+		sources.append({'kind': 'favorites', 'label': label, 'media_type': media_type,
+						'total': len(favs), 'key': 'favorites:%s' % media_type})
 	return sources
 
-def _tmdb_source_payload(source):
-	"""Source -> the v4 items payload: [{'media_type': 'movie'|'tv', 'media_id': int}]."""
+def _tmdb_local_members(source):
+	"""Local membership as {(media_type, media_id)}, in TMDb's v4 vocabulary."""
 	if source['kind'] == 'favorites':
 		from caches import favorites_cache
 		media_type = source['media_type']
@@ -519,13 +523,61 @@ def _tmdb_source_payload(source):
 	else:
 		from caches import personal_lists_cache
 		raw = personal_lists_cache.personal_lists_cache.get_list(source['list_name'], source['author'], update_seen=False)
-	items = []
+	members = set()
 	for item in raw or []:
 		try: media_id = int(str(item.get('media_id') or '').strip())
 		except: continue
-		if media_id <= 0: continue
-		items.append({'media_type': _tmdb_media_type(item.get('type') or 'movie'), 'media_id': media_id})
-	return items
+		if media_id > 0: members.add((_tmdb_media_type(item.get('type') or 'movie'), media_id))
+	return members
+
+def _tmdb_remote_members(list_id):
+	"""Live membership of the TMDb list, plus the titles it already gave us.
+
+	Returns (members, titles). members is None when the fetch failed - a failure must
+	never be read as "the list is empty", or a mirror would wipe both sides.
+	"""
+	tmdb_lists_cache.clear_list(list_id)
+	results = tmdb_list_api.get_list_details(list_id)
+	if not isinstance(results, list): return None, {}
+	members, titles = set(), {}
+	for item in results:
+		try: media_id = int(item.get('id'))
+		except: continue
+		media_type = 'tv' if (item.get('media_type') or '').lower() in ('tv', 'tvshow', 'show') else 'movie'
+		key = (media_type, media_id)
+		members.add(key)
+		titles[key] = item.get('title') or item.get('name') or str(media_id)
+	return members, titles
+
+def _tmdb_write_local(source, members, titles=None):
+	"""Make the local list match `members` exactly."""
+	titles = titles or {}
+	if source['kind'] == 'favorites':
+		from caches import favorites_cache
+		cache, media_type = favorites_cache.favorites_cache, source['media_type']
+		wanted = set(i[1] for i in members)
+		current = {int(i['tmdb_id']): i['title'] for i in cache.get_favorites(media_type) if str(i['tmdb_id']).isdigit()}
+		for media_id in set(current) - wanted: cache.delete_favourite(media_type, media_id, current.get(media_id, ''))
+		for media_id in wanted - set(current):
+			key = ('tv' if media_type == 'tvshow' else 'movie', media_id)
+			cache.set_favourite(media_type, media_id, titles.get(key) or str(media_id))
+		return True
+	from caches import personal_lists_cache
+	cache = personal_lists_cache.personal_lists_cache
+	existing = {}
+	for item in cache.get_list(source['list_name'], source['author'], update_seen=False) or []:
+		try: existing[(_tmdb_media_type(item.get('type') or 'movie'), int(item.get('media_id')))] = item
+		except: continue
+	contents = []
+	for key in members:
+		item = existing.get(key)
+		if item: contents.append(item)
+		else:
+			media_type, media_id = key
+			local_type = 'tvshow' if media_type == 'tv' else 'movie'
+			contents.append({'media_id': str(media_id), 'title': titles.get(key) or str(media_id),
+							'type': local_type, 'release_date': '', 'date_added': str(int(time.time()))})
+	return cache.set_list_contents(source['list_name'], source['author'], contents)
 
 def _tmdb_source_link(source):
 	if source['kind'] == 'favorites':
@@ -542,11 +594,11 @@ def _tmdb_set_source_link(source, list_id):
 	personal_lists_cache.personal_lists_cache.set_service_link('tmdb', source['list_name'], source['author'], list_id)
 
 def _tmdb_pick_target(source, user_lists):
-	"""Pick or create the TMDb list this source sends to. Returns (list_id, cancelled)."""
+	"""Pick or create the TMDb list this source mirrors. Returns (list_id, cancelled)."""
 	choices = [{'name': '[I]Create a new TMDb list (private)...[/I]', 'id': None}]
 	choices += [{'name': i.get('name') or 'TMDb List', 'id': i.get('id')} for i in user_lists]
 	display = [{'line1': i['name']} for i in choices]
-	chosen = kodi_utils.select_dialog(choices, items=json.dumps(display), heading='Send "%s" to' % source['label'], narrow_window='true')
+	chosen = kodi_utils.select_dialog(choices, items=json.dumps(display), heading='Link "%s" to' % source['label'], narrow_window='true')
 	if chosen is None: return None, True
 	if chosen['id'] is not None: return str(chosen['id']), False
 	new_name = kodi_utils.kodi_dialog().input('Name for the new TMDb list', defaultt=source['label'])
@@ -558,13 +610,29 @@ def _tmdb_pick_target(source, user_lists):
 	tmdb_lists_cache.clear_all_lists()
 	return str(data.get('id')), False
 
-def _tmdb_send_source(source, user_lists, allow_pick=True):
-	"""Send one source. Returns a one line result string."""
-	items = _tmdb_source_payload(source)
-	if not items: return '%s: empty, nothing sent' % source['label']
+def _tmdb_payload(members):
+	return [{'media_type': i[0], 'media_id': i[1]} for i in sorted(members)]
+
+def _tmdb_mirror(local, remote, snapshot):
+	"""Agreed membership after mirroring. Pure set logic, no side effects.
+
+	snapshot is what both sides agreed on last time. Anything that has gone missing
+	from a side since then was deleted there, and that deletion is honoured. With no
+	snapshot (first sync) nothing is treated as a deletion, so the two sides merge and
+	nothing can be lost.
+	"""
+	if not snapshot: return local | remote
+	removed_local = snapshot - local
+	removed_remote = snapshot - remote
+	return (local | remote) - removed_local - removed_remote
+
+def _tmdb_sync_source(source, user_lists, allow_pick=True):
+	"""Mirror one local list against its TMDb list. Returns a one line result."""
+	from caches import list_sync_cache
 	list_id = _tmdb_source_link(source)
 	if list_id and not any(str(i.get('id')) == str(list_id) for i in user_lists):
 		_tmdb_set_source_link(source, None)
+		list_sync_cache.clear_snapshot(_TMDB_SYNC_SERVICE, source['key'])
 		list_id = None
 	if not list_id:
 		if not allow_pick: return '%s: not linked yet' % source['label']
@@ -572,36 +640,80 @@ def _tmdb_send_source(source, user_lists, allow_pick=True):
 		if cancelled: return '%s: cancelled' % source['label']
 		if not list_id: return '%s: could not create the list' % source['label']
 		_tmdb_set_source_link(source, list_id)
-	if not process_add_to_list(list_id, items): return '%s: TMDb refused the items' % source['label']
-	return '%s: %s items sent' % (source['label'], len(items))
+		list_sync_cache.clear_snapshot(_TMDB_SYNC_SERVICE, source['key'])
+	local = _tmdb_local_members(source)
+	remote, titles = _tmdb_remote_members(list_id)
+	if remote is None: return '%s: could not read the TMDb list, skipped' % source['label']
+	snapshot = list_sync_cache.get_snapshot(_TMDB_SYNC_SERVICE, source['key'])
+	final = _tmdb_mirror(local, remote, snapshot)
+	to_add_remote = final - remote
+	to_remove_remote = remote - final
+	pushed = True
+	if to_add_remote:
+		pushed = add_to_tmdb_list(list_id, {'items': _tmdb_payload(to_add_remote)}, notify=False)
+	if pushed and to_remove_remote:
+		pushed = remove_from_tmdb_list(list_id, {'items': _tmdb_payload(to_remove_remote)}, list_name=source['label'])
+	if not pushed: return '%s: TMDb rejected the change, nothing saved' % source['label']
+	if final != local: _tmdb_write_local(source, final, titles)
+	tmdb_lists_cache.clear_list(list_id)
+	tmdb_lists_cache.clear_all_lists()
+	list_sync_cache.set_snapshot(_TMDB_SYNC_SERVICE, source['key'], list_id, final)
+	up, down = len(to_add_remote), len(final - local)
+	gone_up, gone_down = len(to_remove_remote), len(local - final)
+	if not any((up, down, gone_up, gone_down)): return '%s: already in step (%s)' % (source['label'], len(final))
+	bits = []
+	if up: bits.append('%s up' % up)
+	if down: bits.append('%s down' % down)
+	if gone_up: bits.append('%s removed on TMDb' % gone_up)
+	if gone_down: bits.append('%s removed here' % gone_down)
+	return '%s: %s' % (source['label'], ', '.join(bits))
 
-def tmdb_send_lists(params=None):
-	"""Send local lists and Favourites up to TMDb.
+def tmdb_sync_lists(params=None, silent=False):
+	"""Two way sync between the local lists and their TMDb twins.
 
-	Lives on the item context menu so it works from any widget. TMDb has no daily
-	request cap and no list limit, and the whole list goes up in one request.
+	Anything added on TMDb from a browser comes down; anything added on this box goes
+	up; a removal on either side is applied to the other.
 	"""
-	if not tmdblist_user_active(): return kodi_utils.notification('TMDb account not authorised', 3000)
+	if not tmdblist_user_active():
+		if not silent: kodi_utils.notification('TMDb account not authorised', 3000)
+		return 'no account'
 	sources = _tmdb_send_sources()
-	if not sources: return kodi_utils.notification('Nothing to send', 3000)
+	if not sources:
+		if not silent: kodi_utils.notification('Nothing to sync', 3000)
+		return 'nothing'
 	user_lists = tmdb_list_api.get_user_lists() or []
 	if isinstance(user_lists, dict): user_lists = user_lists.get('results') or []
-	rows = [{'label': '[B]Send everything already linked[/B]', 'source': None}]
+	if silent:
+		linked = [i for i in sources if _tmdb_source_link(i)]
+		if not linked: return 'nothing linked'
+		for source in linked: _tmdb_sync_source(source, user_lists, allow_pick=False)
+		kodi_utils.kodi_refresh()
+		return 'success'
+	linked_count = len([i for i in sources if _tmdb_source_link(i)])
+	rows = []
+	if linked_count:
+		rows.append({'label': '[B]Sync all %s linked lists now[/B]' % linked_count, 'source': None})
 	for source in sources:
 		target = _tmdb_source_link(source)
 		name = next((i.get('name') for i in user_lists if str(i.get('id')) == str(target)), None) if target else None
-		status = '[COLOR lime]-> %s[/COLOR]' % name if name else '[COLOR grey]not linked[/COLOR]'
+		status = '[COLOR lime]<-> %s[/COLOR]' % name if name else '[COLOR grey]not linked[/COLOR]'
 		rows.append({'label': '%s [I](x%s)[/I]  %s' % (source['label'], source['total'], status), 'source': source})
 	display = [{'line1': i['label']} for i in rows]
-	chosen = kodi_utils.select_dialog(rows, items=json.dumps(display), heading='Send Lists to TMDb', narrow_window='true')
+	chosen = kodi_utils.select_dialog(rows, items=json.dumps(display), heading='Sync Lists with TMDb', narrow_window='true')
 	if chosen is None: return
-	if chosen['source'] is not None:
-		result = _tmdb_send_source(chosen['source'], user_lists)
-		kodi_utils.ok_dialog(heading='TMDb', text=result)
-		return kodi_utils.kodi_refresh()
-	results = [_tmdb_send_source(i, user_lists, allow_pick=False) for i in sources]
-	kodi_utils.ok_dialog(heading='Sent to TMDb', text='[CR]'.join(results), scroll=True)
+	kodi_utils.show_busy_dialog()
+	try:
+		if chosen['source'] is not None: results = [_tmdb_sync_source(chosen['source'], user_lists)]
+		else: results = [_tmdb_sync_source(i, user_lists, allow_pick=False) for i in sources if _tmdb_source_link(i)]
+	finally:
+		kodi_utils.hide_busy_dialog()
+	kodi_utils.ok_dialog(heading='TMDb Sync', text='[CR]'.join(results), scroll=True)
 	kodi_utils.kodi_refresh()
+	return 'success'
+
+def tmdb_send_lists(params=None):
+	"""Kept so an older context menu entry still works."""
+	return tmdb_sync_lists(params)
 
 def process_add_to_list(list_id, new_contents):
 	success = False

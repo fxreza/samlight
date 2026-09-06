@@ -1474,6 +1474,7 @@ def default_settings():
 #==================== Watched Status Provider
 {'setting_id': 'watched_indicators', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'3': 'MDBList', '4': 'PunchPlay', '0': 'Red Light', '2': 'Simkl', '1': 'Trakt'}},
 #======+============= MDBList Cache
+{'setting_id': 'mdblist.enabled', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'mdblist.user', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'mdblist.client', 'setting_type': 'string', 'setting_default': 'JFZCpEIYFtpvGk47pEEprjEkXzlPL8hJR45jqddJ'},
 {'setting_id': 'mdblist.token', 'setting_type': 'string', 'setting_default': '0'},
@@ -1668,6 +1669,9 @@ def default_settings():
 #==================== TMDb Lists
 {'setting_id': 'tmdb.lists_read_token', 'setting_type': 'string', 'setting_default': 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhMGJmMjA3YzVmZjZjMGNhYWJhYzAzMjdlMzliMWNkMiIsIm5iZiI6MTUwMzk0ODAxMC43NTQsInN1YiI6IjU5YTQ2Y2U4YzNhMzY4MGIxMjAwMjgxYiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.2pYaMVzWy-TNg2SBlkP_CrYWpaxcU7LZIZLPdgJp9jw'},
 {'setting_id': 'tmdb.token', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+{'setting_id': 'tmdb.list_sync_enabled', 'setting_type': 'boolean', 'setting_default': 'true'},
+{'setting_id': 'tmdb.list_sync_hours', 'setting_type': 'action', 'setting_default': '24', 'min_value': '1', 'max_value': '168'},
+{'setting_id': 'tmdb.list_sync_last_run', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'tmdb.link_favorites_movie', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'tmdb.link_favorites_tvshow', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'tmdb.username', 'setting_type': 'string', 'setting_default': 'empty_setting'},

@@ -340,6 +340,40 @@ class ServiceExpiryAlerts:
 			except Exception as e: kodi_utils.logger('ServiceExpiryAlerts', str(e))
 		return kodi_utils.logger('Red Light', 'ServiceExpiryAlerts Service Finished')
 
+class TMDbListSyncMonitor:
+	def run(self, monitor):
+		kodi_utils.logger('Red Light', 'TMDbListSyncMonitor Service Starting')
+		from modules.settings import tmdb_list_sync_enabled, tmdb_list_sync_hours, tmdblist_user_active
+		player = kodi_utils.kodi_player()
+		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
+		# Well clear of the boot storm: this one talks to TMDb and writes to local lists.
+		wait_for_abort(240)
+		while not monitor.abortRequested():
+			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
+			try:
+				if tmdb_list_sync_enabled() and tmdblist_user_active() and _tmdb_sync_due(tmdb_list_sync_hours()) \
+						and not kodi_utils.service_shutting_down(monitor):
+					from indexers.tmdb_lists import tmdb_sync_lists
+					status = tmdb_sync_lists(silent=True)
+					if status == 'success':
+						from caches.settings_cache import set_setting
+						set_setting('tmdb.list_sync_last_run', str(int(time())))
+					kodi_utils.logger('Red Light', 'TMDb List Sync %s' % status)
+			except Exception as e: kodi_utils.logger('Red Light', 'TMDb List Sync Failed: %s' % str(e))
+			# Tick often, the stored last run decides when work happens, so a box that was
+			# unplugged for days catches up instead of missing them.
+			wait_for_abort(1800)
+		try: del player
+		except: pass
+		return kodi_utils.logger('Red Light', 'TMDbListSyncMonitor Service Finished')
+
+def _tmdb_sync_due(interval_hours):
+	from caches.settings_cache import get_setting
+	last = get_setting('redlight.tmdb.list_sync_last_run', 'empty_setting')
+	if last in (None, '', 'empty_setting'): return True
+	try: return (time() - int(last)) >= (interval_hours * 3600)
+	except: return True
+
 class CloudBackupMonitor:
 	def run(self, monitor):
 		kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Starting')
@@ -398,6 +432,7 @@ class RedLightMonitor(Monitor):
 		try: AutoStart().run(self)
 		except Exception as e: kodi_utils.logger('AutoStart', str(e))
 		_start_daemon(lambda: ServiceExpiryAlerts().run(self))
+		_start_daemon(lambda: TMDbListSyncMonitor().run(self))
 		_start_daemon(lambda: CloudBackupMonitor().run(self))
 
 	def onNotification(self, sender, method, data):

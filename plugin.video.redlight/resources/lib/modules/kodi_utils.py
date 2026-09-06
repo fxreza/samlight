@@ -65,7 +65,7 @@ def context_menu_items():
 	{'name': 'MDBList Manager', 'value': 'mdblist_manager'}, {'name': 'MDBList Watchlist', 'value': 'mdblist_watchlist'}, {'name': 'MDBList Library', 'value': 'mdblist_library'},
 	{'name': 'PunchPlay Manager', 'value': 'punchplay_manager'},
 	{'name': 'Simkl Lists Manager', 'value': 'simkl_manager'}, {'name': 'Simkl Plan to Watch', 'value': 'simkl_plantowatch'},
-	{'name': 'TMDb Lists Manager', 'value': 'tmdb_manager'}, {'name': 'TMDb Watchlist', 'value': 'tmdb_watchlist'}, {'name': 'TMDb Favorites', 'value': 'tmdb_favorites'}, {'name': 'Send Lists to TMDb', 'value': 'tmdb_send_lists'},
+	{'name': 'TMDb Lists Manager', 'value': 'tmdb_manager'}, {'name': 'TMDb Watchlist', 'value': 'tmdb_watchlist'}, {'name': 'TMDb Favorites', 'value': 'tmdb_favorites'}, {'name': 'Sync Lists with TMDb', 'value': 'tmdb_send_lists'},
 	{'name': 'Trakt Lists Manager', 'value': 'trakt_manager'}, {'name': 'Trakt Watchlist', 'value': 'trakt_watchlist'}, {'name': 'Trakt Library', 'value': 'trakt_collection'},
 	{'name': 'Personal Lists Manager', 'value': 'personal_manager'}, {'name': 'Favorites Manager', 'value': 'favorites_manager'}, {'name': 'Mark Watched/Unwatched', 'value': 'mark_watched'},
 	{'name': 'Unmark Previous Watched Episode', 'value': 'unmark_previous_episode'}, {'name': 'Exit List', 'value': 'exit'}, {'name': 'Refresh Widgets', 'value': 'refresh'},

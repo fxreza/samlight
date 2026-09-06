@@ -33,7 +33,12 @@ def simkl_user_active():
 	token = settings_cache.read_db_value('simkl.token')
 	return user not in (None, 'empty_setting', '') and token not in (None, '0', '', 'empty_setting')
 
+def mdblist_enabled():
+	"""MDBList is off by default. Turning it off hides every MDBList menu and stops its sync."""
+	return get_setting('redlight.mdblist.enabled', 'false') == 'true'
+
 def mdblist_user_active():
+	if not mdblist_enabled(): return False
 	from caches.settings_cache import settings_cache
 	user = settings_cache.read_db_value('mdblist.user')
 	token = settings_cache.read_db_value('mdblist.token')
@@ -106,6 +111,13 @@ def simkl_sync_interval():
 	try: interval = max(5, int(setting))
 	except: interval = 60
 	return interval, interval * 60
+
+def tmdb_list_sync_enabled():
+	return get_setting('redlight.tmdb.list_sync_enabled', 'true') == 'true'
+
+def tmdb_list_sync_hours():
+	try: return max(1, int(get_setting('redlight.tmdb.list_sync_hours', '24')))
+	except: return 24
 
 def tmdblist_user_active():
 	return get_setting('redlight.tmdb.account_id', 'empty_setting') not in (None, 'empty_setting', '')

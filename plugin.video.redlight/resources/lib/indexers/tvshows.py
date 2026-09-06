@@ -308,7 +308,7 @@ class TVShows:
 			if self.ai_model_active: cm_append(['similar', ('[B]Browse Similar[/B]', self.window_command % browse_similar_params)])
 			if browse_in_trakt_list_params: cm_append(['in_trakt_list', ('[B]In Trakt Lists[/B]', self.window_command % browse_in_trakt_list_params)])
 			if mdblist_manager_params: cm_append(['mdblist_manager', ('[B]MDBList Manager[/B]', 'RunPlugin(%s)' % mdblist_manager_params)])
-			cm_append(['tmdb_send_lists', ('[B]Send Lists to TMDb[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'tmdblist.tmdb_send_lists'}))])
+			cm_append(['tmdb_send_lists', ('[B]Sync Lists with TMDb[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'tmdblist.tmdb_sync_lists'}))])
 			if punchplay_manager_params: cm_append(['punchplay_manager', ('[B]PunchPlay Manager[/B]', 'RunPlugin(%s)' % punchplay_manager_params)])
 			if simkl_manager_params: cm_append(['simkl_manager', ('[B]Simkl Lists Manager[/B]', 'RunPlugin(%s)' % simkl_manager_params)])
 			if tmdb_manager_params: cm_append(['tmdb_manager', ('[B]TMDb Lists Manager[/B]', 'RunPlugin(%s)' % tmdb_manager_params)])

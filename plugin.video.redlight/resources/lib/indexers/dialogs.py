@@ -346,7 +346,8 @@ def favorites_manager_choice(params):
 		else: refresh = param_refresh == 'true'
 	else: function, text, refresh = favorites_cache.set_favourite, 'Add To Favorites?', False
 	heading = title.split('|')[0] if people_favorite else title
-	if not kodi_utils.confirm_dialog(heading=heading, text=text): return
+	# Favourites is a one tap toggle people use constantly: default to OK, not Cancel.
+	if not kodi_utils.confirm_dialog(heading=heading, text=text, default_control=10): return
 	success = function(media_type, tmdb_id, title)
 	if success:
 		kodi_utils.refresh_after_list_change(refresh)

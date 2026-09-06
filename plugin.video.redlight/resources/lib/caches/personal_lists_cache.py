@@ -77,6 +77,16 @@ class PersonalListsCache:
 			return True
 		except: return False
 
+	def set_list_contents(self, list_name, author, contents):
+		"""Replace a list's contents wholesale. Used by two way sync, which computes the
+		final membership itself rather than applying changes one at a time."""
+		try:
+			dbcon = connect_database('personal_lists_db')
+			dbcon.execute('UPDATE personal_lists SET contents=?, total=?, updated=? WHERE name=? AND author=?',
+						(repr(list(contents)), len(contents), get_timestamp(), list_name, author))
+			return True
+		except: return False
+
 	def delete_list_contents(self, list_name, author):
 		try:
 			dbcon = connect_database('personal_lists_db')
