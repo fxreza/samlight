@@ -4,7 +4,7 @@ import sys
 import json
 import time
 from random import shuffle
-from threading import Thread
+from threading import Thread, Lock
 from urllib.parse import unquote
 from apis.tmdblist_api import tmdb_list_api
 from caches.settings_cache import get_setting, set_setting
@@ -275,7 +275,7 @@ def add_to_tmdb_list(list_id, items, list_name=None, notify=True):
 	if notify: kodi_utils.notify_added_to(list_name)
 	return True
 
-def remove_from_tmdb_list(list_id, items, list_name=None):
+def remove_from_tmdb_list(list_id, items, list_name=None, notify=True):
 	try:
 		payload = {'items': []}
 		for item in items.get('items', []):
@@ -284,12 +284,12 @@ def remove_from_tmdb_list(list_id, items, list_name=None):
 		if not payload['items']: raise ValueError('no_items')
 		data = tmdb_list_api.add_remove_from_list(list_id, payload, 'delete')
 		if not _tmdb_list_remove_succeeded(data):
-			kodi_utils.notify_not_in_list(settle_ms=300)
+			if notify: kodi_utils.notify_not_in_list(settle_ms=300)
 			return False
-		kodi_utils.notify_removed_from(list_name)
+		if notify: kodi_utils.notify_removed_from(list_name)
 		return True
 	except:
-		kodi_utils.notify_not_in_list(settle_ms=300)
+		if notify: kodi_utils.notify_not_in_list(settle_ms=300)
 		return False
 
 def rename_tmdb_list(current_name, list_id):
@@ -658,7 +658,7 @@ def _tmdb_sync_source(source, user_lists, allow_pick=True):
 	if to_add_remote:
 		pushed = add_to_tmdb_list(list_id, {'items': _tmdb_payload(to_add_remote)}, notify=False)
 	if pushed and to_remove_remote:
-		pushed = remove_from_tmdb_list(list_id, {'items': _tmdb_payload(to_remove_remote)}, list_name=source['label'])
+		pushed = remove_from_tmdb_list(list_id, {'items': _tmdb_payload(to_remove_remote)}, list_name=source['label'], notify=False)
 	if not pushed: return '%s: TMDb rejected the change, nothing saved' % source['label'], False
 	if final != local: _tmdb_write_local(source, final, titles)
 	tmdb_lists_cache.clear_list(list_id)
@@ -704,6 +704,43 @@ def tmdb_sync_on_open(kind, list_name=None, author=None, media_type=None):
 		return True
 	except Exception as e:
 		kodi_utils.logger('TMDb Sync', 'on open skipped: %s' % e)
+		return False
+
+_change_sync_lock = Lock()
+_change_sync_busy = set()
+
+def _tmdb_source_for(kind, list_name=None, author=None, media_type=None):
+	if kind == 'favorites':
+		return {'kind': 'favorites', 'label': 'Favourites', 'media_type': media_type,
+				'total': 0, 'key': 'favorites:%s' % media_type}
+	author = author or 'Unknown'
+	return {'kind': 'personal', 'label': list_name, 'list_name': list_name, 'author': author,
+			'total': 0, 'key': 'personal:%s|%s' % (list_name, author)}
+
+def tmdb_sync_after_change(kind, list_name=None, author=None, media_type=None):
+	"""Push a local add or remove straight up to TMDb, in the background.
+
+	Runs off the UI thread so adding to a list stays instant, and only ever touches
+	the one list that changed. If that list is already syncing the call is dropped -
+	the run in flight will pick the change up, or the next one will.
+	"""
+	try:
+		if get_setting('redlight.tmdb.list_sync_on_change', 'true') != 'true': return False
+		if not tmdblist_user_active(): return False
+		source = _tmdb_source_for(kind, list_name, author, media_type)
+		if not _tmdb_source_link(source): return False
+		with _change_sync_lock:
+			if source['key'] in _change_sync_busy: return False
+			_change_sync_busy.add(source['key'])
+		def _run():
+			try: _tmdb_sync_source(source, None, allow_pick=False)
+			except Exception as e: kodi_utils.logger('TMDb Sync', 'on change failed: %s' % e)
+			finally:
+				with _change_sync_lock: _change_sync_busy.discard(source['key'])
+		Thread(target=_run, daemon=True).start()
+		return True
+	except Exception as e:
+		kodi_utils.logger('TMDb Sync', 'on change skipped: %s' % e)
 		return False
 
 def tmdb_sync_lists(params=None, silent=False):

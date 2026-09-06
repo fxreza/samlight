@@ -254,6 +254,8 @@ def personallists_manager_choice(params):
 	from caches.personal_lists_cache import personal_lists_cache
 	result = personal_lists_cache.add_remove_list_item(list_name, author, action, new_contents)
 	kodi_utils.notification(result, 3000)
+	from indexers.tmdb_lists import tmdb_sync_after_change
+	tmdb_sync_after_change('personal', list_name=list_name, author=author)
 	kodi_utils.refresh_after_list_change(action == 'remove' and any([kodi_utils.path_check(list_name) or kodi_utils.external()]))
 
 def tmdblists_manager_choice(params):
@@ -350,6 +352,8 @@ def favorites_manager_choice(params):
 	if not kodi_utils.confirm_dialog(heading=heading, text=text, default_control=10): return
 	success = function(media_type, tmdb_id, title)
 	if success:
+		from indexers.tmdb_lists import tmdb_sync_after_change
+		tmdb_sync_after_change('favorites', media_type=media_type)
 		kodi_utils.refresh_after_list_change(refresh)
 		kodi_utils.notification('Success', 3500)
 	else: kodi_utils.notification('Error', 3500)

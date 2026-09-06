@@ -2822,6 +2822,13 @@
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tmdb.list_sync_on_open)</onclick>
                       </item>
                       <item>
+                          <property name="setting_label">    - Sync Straight After a Change</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb.list_sync_on_change)]</property>
+                          <property name="setting_description">Push an add or remove up to TMDb as soon as you make it, in the background. Only the list you changed is touched.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tmdb.list_sync_on_change)</onclick>
+                      </item>
+                      <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <visible>!String.IsEqual(Window(10000).Property(redlight.tmdb.lists_read_token),eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhMGJmMjA3YzVmZjZjMGNhYWJhYzAzMjdlMzliMWNkMiIsIm5iZiI6MTUwMzk0ODAxMC43NTQsInN1YiI6IjU5YTQ2Y2U4YzNhMzY4MGIxMjAwMjgxYiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.2pYaMVzWy-TNg2SBlkP_CrYWpaxcU7LZIZLPdgJp9jw)</visible>
                           <property name="setting_label">    - Restore Default Lists Read Access Token</property>
