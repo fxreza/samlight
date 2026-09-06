@@ -711,7 +711,7 @@ def tmdb_sync_after_change(kind, list_name=None, author=None, media_type=None):
 		kodi_utils.logger('TMDb Sync', 'on change skipped: %s' % e)
 		return False
 
-def tmdb_poll_lists():
+def tmdb_poll_lists(params=None):
 	"""One request: has any linked list changed on TMDb? Sync only the ones that did.
 
 	This is the cheap check that makes a short interval affordable. TMDb returns a
