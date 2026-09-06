@@ -308,14 +308,14 @@ class TVShows:
 			if self.ai_model_active: cm_append(['similar', ('[B]Browse Similar[/B]', self.window_command % browse_similar_params)])
 			if browse_in_trakt_list_params: cm_append(['in_trakt_list', ('[B]In Trakt Lists[/B]', self.window_command % browse_in_trakt_list_params)])
 			if mdblist_manager_params: cm_append(['mdblist_manager', ('[B]MDBList Manager[/B]', 'RunPlugin(%s)' % mdblist_manager_params)])
-			cm_append(['tmdb_send_lists', ('[B]Sync Lists with TMDb[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'tmdblist.tmdb_sync_lists'}))])
+			cm_append(['tmdb_send_lists', ('[B]Sync with TMDb[/B]', 'RunPlugin(%s)' % self.build_url({'mode': 'tmdblist.tmdb_sync_lists'}))])
 			if punchplay_manager_params: cm_append(['punchplay_manager', ('[B]PunchPlay Manager[/B]', 'RunPlugin(%s)' % punchplay_manager_params)])
 			if simkl_manager_params: cm_append(['simkl_manager', ('[B]Simkl Lists Manager[/B]', 'RunPlugin(%s)' % simkl_manager_params)])
 			if tmdb_manager_params: cm_append(['tmdb_manager', ('[B]TMDb Lists Manager[/B]', 'RunPlugin(%s)' % tmdb_manager_params)])
 			if trakt_manager_params: cm_append(['trakt_manager', ('[B]Trakt Lists Manager[/B]', 'RunPlugin(%s)' % trakt_manager_params)])
 			settings.append_list_shortcut_context_menus(cm_append, self.build_url, self.cm_sort_order, 'tvshow', tmdb_id, imdb_id, tvdb_id, title, poster)
 			cm_append(['personal_manager', ('[B]Personal Lists Manager[/B]', 'RunPlugin(%s)' % personal_manager_params)])
-			cm_append(['random_continual', ('[B]Random Play (Continual)[/B]', 'RunPlugin(%s)' % self.build_url(
+			cm_append(['random_continual', ('[B]Random Play[/B]', 'RunPlugin(%s)' % self.build_url(
 				{'mode': 'random_continual_choice', 'tmdb_id': tmdb_id}))])
 			cm_append(['favorites_manager', ('[B]Remove from Favorites[/B]' if str(tmdb_id) in self.favorite_ids else '[B]Add to Favorites[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
 			if playcount:

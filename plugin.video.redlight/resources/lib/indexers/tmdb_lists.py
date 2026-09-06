@@ -779,7 +779,7 @@ def tmdb_sync_lists(params=None, silent=False):
 		status = '[COLOR lime]<-> %s[/COLOR]' % name if name else '[COLOR grey]not linked[/COLOR]'
 		rows.append({'label': '%s [I](x%s)[/I]  %s' % (source['label'], source['total'], status), 'source': source})
 	display = [{'line1': i['label']} for i in rows]
-	chosen = kodi_utils.select_dialog(rows, items=json.dumps(display), heading='Sync Lists with TMDb', narrow_window='true')
+	chosen = kodi_utils.select_dialog(rows, items=json.dumps(display), heading='Sync with TMDb', narrow_window='true')
 	if chosen is None: return
 	kodi_utils.show_busy_dialog()
 	try:

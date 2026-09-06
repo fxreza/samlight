@@ -1416,7 +1416,7 @@ def migrate_external_scraper_context_menu_for_upgrade(had_existing_settings):
 	return changed
 
 def migrate_random_continual_cm_for_upgrade(had_existing_settings):
-	"""Retro-fit the Random Play (Continual) entry onto an existing saved menu.
+	"""Retro-fit the Random Play entry onto an existing saved menu.
 
 	A stored context_menu.enabled beats the shipped default, so a new entry stays
 	invisible without this. Anchored after browse_episodes, clear of the manager run

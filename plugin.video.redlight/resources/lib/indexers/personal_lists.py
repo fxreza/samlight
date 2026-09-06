@@ -40,7 +40,7 @@ def get_personal_lists(params):
 					'list_name': list_name, 'sort_order': sort_order, 'seen': seen, 'poster': custom_poster, 'fanart': custom_fanart})),
 				('[B]Delete List[/B]', 'RunPlugin(%s)' % build_url({'mode': 'personal_lists.delete_personal_list', 'list_name': list_name, 'author': author,
 					'poster': custom_poster, 'fanart': custom_fanart})),
-				('[B]Sync Lists with TMDb[/B]', 'RunPlugin(%s)' % build_url({'mode': 'tmdblist.tmdb_sync_lists'})),
+				('[B]Sync with TMDb[/B]', 'RunPlugin(%s)' % build_url({'mode': 'tmdblist.tmdb_sync_lists'})),
 				('[B]Add to Shortcut Folder[/B]', 'RunPlugin(%s)' % build_url({'mode': 'menu_editor.shortcut_folder_add_known', 'url': url})),
 				('[B]Set Custom Sort[/B]', 'RunPlugin(%s)' % build_url({'mode': 'list_sort_override_choice', 'adapter': 'personal',
 					'list_key': 'personal:%s|%s' % (list_name, author), 'fallback': 'date_added:desc'}))]
