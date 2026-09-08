@@ -490,7 +490,7 @@ def _drop_from_favorites(action, media_type, tmdb_id):
 	Favourites is affected - personal lists are left alone.
 	"""
 	try:
-		if action != 'watched' or not tmdb_id: return
+		if action != 'mark_as_watched' or not tmdb_id: return
 		if not settings.remove_favorite_when_watched(): return
 		from caches.favorites_cache import favorites_cache
 		if not any(i['tmdb_id'] == str(tmdb_id) for i in favorites_cache.get_favorites(media_type)): return
