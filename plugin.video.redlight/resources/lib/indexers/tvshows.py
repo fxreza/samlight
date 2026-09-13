@@ -322,7 +322,7 @@ class TVShows:
 			cm_append(['personal_manager', ('[B]Personal Lists Manager[/B]', 'RunPlugin(%s)' % personal_manager_params)])
 			cm_append(['random_continual', ('[B]Random Play[/B]', 'RunPlugin(%s)' % self.build_url(
 				{'mode': 'random_continual_choice', 'tmdb_id': tmdb_id}))])
-			cm_append(['favorites_manager', ('[B]Remove from Favorites[/B]' if str(tmdb_id) in self.favorite_ids else '[B]Add to Favorites[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
+			cm_append(['favorites_manager', ('[B]Remove from Mona[/B]' if str(tmdb_id) in self.favorite_ids else '[B]Add to Mona[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
 			if playcount:
 				if self.widget_hide_watched: return
 			elif not unaired:

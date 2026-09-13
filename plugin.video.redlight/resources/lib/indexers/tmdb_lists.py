@@ -508,7 +508,7 @@ def _tmdb_send_sources():
 		sources.append({'kind': 'personal', 'label': row['name'], 'list_name': row['name'],
 						'author': row['author'], 'total': row['total'] or 0,
 						'key': 'personal:%s|%s' % (row['name'], row['author'])})
-	for media_type, label in (('movie', 'Favourites: Movies'), ('tvshow', 'Favourites: TV Shows')):
+	for media_type, label in (('movie', "Mona's Movies"), ('tvshow', "Mona's TV Shows")):
 		favs = favorites_cache.favorites_cache.get_favorites(media_type)
 		sources.append({'kind': 'favorites', 'label': label, 'media_type': media_type,
 						'total': len(favs), 'key': 'favorites:%s' % media_type})
