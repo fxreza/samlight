@@ -1144,7 +1144,7 @@ def _tmdb_watchfav_shortcut_choice(params, list_id):
 	in_list = check_item_status_watchfav(list_id, media_type, tmdb_id)
 	text = 'Remove from %s?' % label if in_list else 'Add to %s?' % label
 	if not kodi_utils.confirm_dialog(heading=heading, text=text): return
-	success = add_remove_watchfavs(media_type, tmdb_id, list_id, not in_list)
+	success = add_remove_watchfavs(media_type, tmdb_id, list_id, not in_list, title=params.get('title'))
 	tmdb_lists_cache.clear_watchfavrecs(list_id, media_type)
 	if not success: return
 	kodi_utils.notification('Success', 3000)

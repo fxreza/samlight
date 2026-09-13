@@ -87,6 +87,16 @@ class TMDbListAPI:
 			set_setting('tmdb.session_id', 'empty_setting')
 			set_setting('tmdb.account_session_id', 'empty_setting')
 			tmdb_lists_cache.clear_all()
+			# The local Watchlist and Favorites mirror this account. Drop them with their sync
+			# history, so signing in to another account never merges or deletes across the two.
+			try:
+				from caches.favorites_cache import favorites_cache
+				from caches import list_sync_cache
+				for list_type in ('watchlist', 'favorites'):
+					for media_type in ('movie', 'tvshow'):
+						favorites_cache.clear_favorites('tmdb_%s_%s' % (list_type, media_type))
+						list_sync_cache.clear_snapshot('tmdb', 'account:%s:%s' % (list_type, media_type))
+			except: pass
 		return notification(notice)
 
 	def get_user_lists(self):

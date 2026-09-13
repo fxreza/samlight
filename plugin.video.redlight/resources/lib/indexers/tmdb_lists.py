@@ -258,13 +258,45 @@ def _tmdb_list_remove_succeeded(data):
 		return any(isinstance(i, dict) and i.get('success') for i in results)
 	return bool(data.get('success'))
 
-def add_remove_watchfavs(media_type, media_id, list_type, status):
-	media_type = _tmdb_media_type(media_type)
-	data = tmdb_list_api.add_remove_from_watchfavs(media_type, media_id, list_type, status)
-	if not data or not data.get('success'):
-		if not status: kodi_utils.notify_not_in_list()
-		else: kodi_utils.notify_error()
+# TMDb Watchlist and Favorites are kept on the box like Mona: rows in the favourites table
+# under their own db_type, so backups carry them and the table count never changes. Reads
+# are local; a change is made here first and pushed to TMDb in the background.
+_TMDB_ACCOUNT_SHELVES = ('watchlist', 'favorites')
+_TMDB_SHELF_LABELS = {'watchlist': 'TMDb Watchlist', 'favorites': 'TMDb Favorites'}
+
+def tmdb_shelf_db_type(list_type, media_type):
+	return 'tmdb_%s_%s' % (list_type, 'movie' if _tmdb_media_type(media_type) == 'movie' else 'tvshow')
+
+def tmdb_shelf_items(list_type, media_type):
+	"""Local copy, oldest added first - the order TMDb serves the shelf in."""
+	from caches.favorites_cache import favorites_cache
+	return list(reversed(favorites_cache.get_favorites(tmdb_shelf_db_type(list_type, media_type))))
+
+def _tmdb_title_for(media_type, media_id):
+	try:
+		from modules import metadata, settings
+		from modules.utils import get_datetime
+		function = metadata.movie_meta if _tmdb_media_type(media_type) == 'movie' else metadata.tvshow_meta
+		meta = function('tmdb_id', media_id, settings.tmdb_api_key(), settings.mpaa_region(), get_datetime())
+		return meta.get('title') or str(media_id)
+	except: return str(media_id)
+
+def add_remove_watchfavs(media_type, media_id, list_type, status, title=None):
+	from caches.favorites_cache import favorites_cache
+	db_type, media_id = tmdb_shelf_db_type(list_type, media_type), str(media_id)
+	present = any(i['tmdb_id'] == media_id for i in favorites_cache.get_favorites(db_type))
+	if status:
+		if present: return True
+		success = favorites_cache.set_favourite(db_type, media_id, title or _tmdb_title_for(media_type, media_id))
+	else:
+		if not present:
+			kodi_utils.notify_not_in_list()
+			return False
+		success = favorites_cache.delete_favourite(db_type, media_id, '')
+	if not success:
+		kodi_utils.notify_error()
 		return False
+	tmdb_sync_after_change('account', media_type=media_type, list_type=list_type)
 	return True
 
 def add_to_tmdb_list(list_id, items, list_name=None, notify=True):
@@ -313,10 +345,7 @@ def check_item_status(list_id, media_type, media_id):
 	except: return False
 
 def check_item_status_watchfav(list_id, media_type, media_id):
-	try:
-		media_type = _tmdb_media_type(media_type)
-		items = tmdb_list_api.get_watchfavrecs_list_details(list_id, media_type) or []
-		return int(media_id) in [i['id'] for i in items]
+	try: return str(media_id) in [i['tmdb_id'] for i in tmdb_shelf_items(list_id, media_type)]
 	except: return False
 
 def tmdb_lists_split_by_membership(media_type, media_id):
@@ -426,7 +455,9 @@ def get_all_tmdb_lists(sort_order=None):
 
 def get_tmdb_list(params):
 	list_id, media_type = params['list_id'], params.get('media_type')
-	if list_id in ('watchlist', 'favorites', 'recommendations'):
+	if list_id in _TMDB_ACCOUNT_SHELVES:
+		contents = _tmdb_shelf_contents(list_id, media_type)
+	elif list_id == 'recommendations':
 		contents = [dict(i, **{'media_type': media_type}) for i in tmdb_list_api.get_watchfavrecs_list_details(list_id, media_type)]
 	else:
 		contents = tmdb_list_api.get_list_details(list_id)
@@ -442,6 +473,44 @@ def get_tmdb_list(params):
 		sort_media = 'movies' if media_type in ('movie', 'movies') else 'shows'
 		return list_sort.sort_source(contents, 'tmdb.%s:%s' % (list_id, sort_media), None, 'tmdb', fallback='default:asc')
 	return list_sort.sort_source(contents, 'tmdb:%s' % list_id, None, 'tmdb', fallback='default:asc')
+
+def _tmdb_shelf_contents(list_type, media_type):
+	"""The local shelf in the row shape the TMDb list builder and sorter expect."""
+	from caches import list_sync_cache
+	source = _tmdb_source_for('account', media_type=media_type, list_type=list_type)
+	# First open after the update, before the service has run: fill the shelf from TMDb once
+	# rather than show it empty.
+	if not list_sync_cache.last_synced(_TMDB_SYNC_SERVICE, source['key']) and tmdblist_user_active():
+		try: _tmdb_sync_source(source, None, allow_pick=False)
+		except Exception as e: kodi_utils.logger('TMDb Sync', 'first fill failed: %s' % e)
+	v4_type = _tmdb_media_type(media_type)
+	contents = [{'id': int(i['tmdb_id']), 'title': i['title'], 'media_type': v4_type, 'original_order': c, 'release_date': ''}
+				for c, i in enumerate(tmdb_shelf_items(list_type, media_type)) if str(i['tmdb_id']).isdigit()]
+	# Release dates are not stored. Only a release date sort needs them, so only then are they
+	# read from the metadata cache, fetching the few titles it does not hold yet - no extra
+	# work for every other sort.
+	try:
+		from modules import list_sort
+		sort_media = 'movies' if v4_type == 'movie' else 'shows'
+		if list_sort.resolve('tmdb.%s:%s' % (list_type, sort_media), None, 'default:asc').get('field') == 'release_date':
+			from caches.meta_cache import meta_cache
+			meta_type = 'movie' if v4_type == 'movie' else 'tvshow'
+			missing = []
+			for item in contents:
+				meta = meta_cache.get(meta_type, 'tmdb_id', item['id'])
+				if meta: item['release_date'] = meta.get('premiered') or ''
+				else: missing.append(item)
+			if missing:
+				from modules import metadata, settings
+				from modules.utils import TaskPool, get_datetime
+				function = metadata.movie_meta if v4_type == 'movie' else metadata.tvshow_meta
+				api_key, mpaa_region, current_date = settings.tmdb_api_key(), settings.mpaa_region(), get_datetime()
+				def _fetch(item):
+					try: item['release_date'] = (function('tmdb_id', item['id'], api_key, mpaa_region, current_date) or {}).get('premiered') or ''
+					except: pass
+				[i.join() for i in TaskPool().tasks(_fetch, missing, settings.max_threads())]
+	except: pass
+	return contents
 
 def cache_delete_all_tmdb(params=None):
 	tmdb_lists_cache.clear_all()
@@ -501,7 +570,8 @@ _TMDB_FAV_LINK_SETTING = {'movie': 'tmdb.link_favorites_movie', 'tvshow': 'tmdb.
 _TMDB_SYNC_SERVICE = 'tmdb'
 
 def _tmdb_send_sources():
-	"""Everything syncable: local personal lists, plus each half of Favourites."""
+	"""Everything syncable: local personal lists, each half of Favourites, and TMDb's own
+	Watchlist and Favorites."""
 	from caches import personal_lists_cache, favorites_cache
 	sources = []
 	for row in personal_lists_cache.personal_lists_cache.get_lists():
@@ -512,11 +582,18 @@ def _tmdb_send_sources():
 		favs = favorites_cache.favorites_cache.get_favorites(media_type)
 		sources.append({'kind': 'favorites', 'label': label, 'media_type': media_type,
 						'total': len(favs), 'key': 'favorites:%s' % media_type})
+	for list_type in _TMDB_ACCOUNT_SHELVES:
+		for media_type in ('movie', 'tvshow'):
+			source = _tmdb_source_for('account', media_type=media_type, list_type=list_type)
+			source['total'] = len(tmdb_shelf_items(list_type, media_type))
+			sources.append(source)
 	return sources
 
 def _tmdb_local_members(source):
 	"""Local membership as {(media_type, media_id)}, in TMDb's v4 vocabulary."""
-	if source['kind'] == 'favorites':
+	if source['kind'] == 'account':
+		raw = [{'media_id': i['tmdb_id'], 'type': source['media_type']} for i in tmdb_shelf_items(source['list_type'], source['media_type'])]
+	elif source['kind'] == 'favorites':
 		from caches import favorites_cache
 		media_type = source['media_type']
 		raw = [{'media_id': i['tmdb_id'], 'type': media_type} for i in favorites_cache.favorites_cache.get_favorites(media_type)]
@@ -549,9 +626,58 @@ def _tmdb_remote_members(list_id):
 		titles[key] = item.get('title') or item.get('name') or str(media_id)
 	return members, titles
 
+def _tmdb_account_url(list_type, media_type):
+	return '%s/account/%s/%s/%s' % (tmdb_list_api.base_url, get_setting('redlight.tmdb.account_id'), _tmdb_media_type(media_type), list_type)
+
+def _tmdb_account_remote_members(list_type, media_type):
+	"""Live membership of a Watchlist or Favorites shelf, oldest added first.
+
+	Pages are read one after another and any failed page fails the whole read: a partial
+	read would look like removals on TMDb and delete them here.
+	"""
+	url, v4_type = _tmdb_account_url(list_type, media_type), _tmdb_media_type(media_type)
+	members, titles, page, total_pages = set(), {}, 1, 1
+	while page <= total_pages:
+		result = tmdb_list_api.request_data(url, params={'page': page, 'sort_by': 'created_at.asc'})
+		if not isinstance(result, dict) or not isinstance(result.get('results'), list): return None, {}
+		total_pages = result.get('total_pages') or 1
+		for item in result['results']:
+			try: key = (v4_type, int(item.get('id')))
+			except: continue
+			members.add(key)
+			titles[key] = item.get('title') or item.get('name') or str(key[1])
+		page += 1
+	return members, titles
+
+def _tmdb_account_stamp(list_type, media_type):
+	"""One small request: the shelf's size plus its newest page. An add or a removal on the
+	TMDb website changes one or the other. None when the request failed."""
+	result = tmdb_list_api.request_data(_tmdb_account_url(list_type, media_type), params={'page': 1, 'sort_by': 'created_at.desc'})
+	if not isinstance(result, dict) or not isinstance(result.get('results'), list): return None
+	return '%s|%s' % (result.get('total_results') or 0, ','.join(str(i.get('id')) for i in result['results']))
+
+def _tmdb_account_push(source, to_add, to_remove):
+	"""Watchlist and Favorites take one title per request. True only if every one landed."""
+	for status, members in ((True, to_add), (False, to_remove)):
+		for media_type, media_id in sorted(members):
+			data = tmdb_list_api.add_remove_from_watchfavs(media_type, media_id, source['list_type'], status)
+			if not data or not data.get('success'): return False
+	return True
+
 def _tmdb_write_local(source, members, titles=None):
 	"""Make the local list match `members` exactly."""
 	titles = titles or {}
+	if source['kind'] == 'account':
+		from caches.favorites_cache import favorites_cache
+		db_type = tmdb_shelf_db_type(source['list_type'], source['media_type'])
+		wanted = set(i[1] for i in members)
+		current = set(int(i['tmdb_id']) for i in favorites_cache.get_favorites(db_type) if str(i['tmdb_id']).isdigit())
+		for media_id in current - wanted: favorites_cache.delete_favourite(db_type, media_id, '')
+		# titles is in TMDb's order, so new rows land in the order they were added there.
+		new_keys = [key for key in titles if key[1] in wanted - current]
+		new_keys += [key for key in members if key[1] in wanted - current and key not in titles]
+		for key in new_keys: favorites_cache.set_favourite(db_type, key[1], titles.get(key) or str(key[1]))
+		return True
 	if source['kind'] == 'favorites':
 		from caches import favorites_cache
 		cache, media_type = favorites_cache.favorites_cache, source['media_type']
@@ -580,6 +706,8 @@ def _tmdb_write_local(source, members, titles=None):
 	return cache.set_list_contents(source['list_name'], source['author'], contents)
 
 def _tmdb_source_link(source):
+	# Watchlist and Favorites belong to the account itself, so they are always linked.
+	if source['kind'] == 'account': return 'account:%s' % source['list_type'] if tmdblist_user_active() else None
 	if source['kind'] == 'favorites':
 		value = get_setting('redlight.%s' % _TMDB_FAV_LINK_SETTING[source['media_type']], 'empty_setting')
 		return None if value in (None, '', '0', 'empty_setting') else str(value)
@@ -587,6 +715,7 @@ def _tmdb_source_link(source):
 	return personal_lists_cache.personal_lists_cache.get_service_link('tmdb', source['list_name'], source['author'])
 
 def _tmdb_set_source_link(source, list_id):
+	if source['kind'] == 'account': return
 	if source['kind'] == 'favorites':
 		set_setting(_TMDB_FAV_LINK_SETTING[source['media_type']], str(list_id) if list_id else 'empty_setting')
 		return
@@ -635,8 +764,11 @@ def _tmdb_sync_source(source, user_lists, allow_pick=True):
 	linked list still exists, which saves a request on the open-a-list path.
 	"""
 	from caches import list_sync_cache
+	is_account = source['kind'] == 'account'
 	list_id = _tmdb_source_link(source)
-	if list_id and user_lists is not None and not any(str(i.get('id')) == str(list_id) for i in user_lists):
+	if is_account:
+		if not list_id: return '%s: TMDb account not authorised' % source['label'], False
+	elif list_id and user_lists is not None and not any(str(i.get('id')) == str(list_id) for i in user_lists):
 		_tmdb_set_source_link(source, None)
 		list_sync_cache.clear_snapshot(_TMDB_SYNC_SERVICE, source['key'])
 		list_id = None
@@ -648,22 +780,32 @@ def _tmdb_sync_source(source, user_lists, allow_pick=True):
 		_tmdb_set_source_link(source, list_id)
 		list_sync_cache.clear_snapshot(_TMDB_SYNC_SERVICE, source['key'])
 	local = _tmdb_local_members(source)
-	remote, titles = _tmdb_remote_members(list_id)
+	if is_account: remote, titles = _tmdb_account_remote_members(source['list_type'], source['media_type'])
+	else: remote, titles = _tmdb_remote_members(list_id)
 	if remote is None: return '%s: could not read the TMDb list, skipped' % source['label'], False
 	snapshot = list_sync_cache.get_snapshot(_TMDB_SYNC_SERVICE, source['key'])
 	final = _tmdb_mirror(local, remote, snapshot)
 	to_add_remote = final - remote
 	to_remove_remote = remote - final
 	pushed = True
-	if to_add_remote:
-		pushed = add_to_tmdb_list(list_id, {'items': _tmdb_payload(to_add_remote)}, notify=False)
-	if pushed and to_remove_remote:
-		pushed = remove_from_tmdb_list(list_id, {'items': _tmdb_payload(to_remove_remote)}, list_name=source['label'], notify=False)
+	if is_account:
+		if to_add_remote or to_remove_remote: pushed = _tmdb_account_push(source, to_add_remote, to_remove_remote)
+	else:
+		if to_add_remote:
+			pushed = add_to_tmdb_list(list_id, {'items': _tmdb_payload(to_add_remote)}, notify=False)
+		if pushed and to_remove_remote:
+			pushed = remove_from_tmdb_list(list_id, {'items': _tmdb_payload(to_remove_remote)}, list_name=source['label'], notify=False)
 	if not pushed: return '%s: TMDb rejected the change, nothing saved' % source['label'], False
 	if final != local: _tmdb_write_local(source, final, titles)
-	tmdb_lists_cache.clear_list(list_id)
-	tmdb_lists_cache.clear_all_lists()
+	if is_account: tmdb_lists_cache.clear_watchfavrecs(source['list_type'], _tmdb_media_type(source['media_type']))
+	else:
+		tmdb_lists_cache.clear_list(list_id)
+		tmdb_lists_cache.clear_all_lists()
 	list_sync_cache.set_snapshot(_TMDB_SYNC_SERVICE, source['key'], list_id, final)
+	if is_account:
+		# Stamp the shelf as it now stands, so the poll does not re-read what this run just did.
+		stamp = _tmdb_account_stamp(source['list_type'], source['media_type'])
+		if stamp: list_sync_cache.set_remote_stamp(_TMDB_SYNC_SERVICE, source['key'], list_id, stamp)
 	up, down = len(to_add_remote), len(final - local)
 	gone_up, gone_down = len(to_remove_remote), len(local - final)
 	if not any((up, down, gone_up, gone_down)): return '%s: already in step (%s)' % (source['label'], len(final)), False
@@ -676,8 +818,14 @@ def _tmdb_sync_source(source, user_lists, allow_pick=True):
 
 _change_sync_lock = Lock()
 _change_sync_busy = set()
+_change_sync_dirty = set()
 
-def _tmdb_source_for(kind, list_name=None, author=None, media_type=None):
+def _tmdb_source_for(kind, list_name=None, author=None, media_type=None, list_type=None):
+	if kind == 'account':
+		media_type = 'movie' if _tmdb_media_type(media_type) == 'movie' else 'tvshow'
+		label = '%s: %s' % (_TMDB_SHELF_LABELS[list_type], 'Movies' if media_type == 'movie' else 'TV Shows')
+		return {'kind': 'account', 'label': label, 'list_type': list_type, 'media_type': media_type,
+				'total': 0, 'key': 'account:%s:%s' % (list_type, media_type)}
 	if kind == 'favorites':
 		return {'kind': 'favorites', 'label': 'Favourites', 'media_type': media_type,
 				'total': 0, 'key': 'favorites:%s' % media_type}
@@ -685,26 +833,36 @@ def _tmdb_source_for(kind, list_name=None, author=None, media_type=None):
 	return {'kind': 'personal', 'label': list_name, 'list_name': list_name, 'author': author,
 			'total': 0, 'key': 'personal:%s|%s' % (list_name, author)}
 
-def tmdb_sync_after_change(kind, list_name=None, author=None, media_type=None):
+def tmdb_sync_after_change(kind, list_name=None, author=None, media_type=None, list_type=None):
 	"""Push a local add or remove straight up to TMDb, in the background.
 
 	Runs off the UI thread so adding to a list stays instant, and only ever touches
-	the one list that changed. If that list is already syncing the call is dropped -
-	the run in flight will pick the change up, or the next one will.
+	the one list that changed. If that list is already syncing the call is not run
+	twice - it marks the list dirty and the run in flight goes round once more, since
+	it may have read the list before this change landed.
 	"""
 	try:
 		if get_setting('redlight.tmdb.list_sync_on_change', 'true') != 'true': return False
 		if not tmdblist_user_active(): return False
-		source = _tmdb_source_for(kind, list_name, author, media_type)
+		source = _tmdb_source_for(kind, list_name, author, media_type, list_type)
 		if not _tmdb_source_link(source): return False
 		with _change_sync_lock:
-			if source['key'] in _change_sync_busy: return False
+			if source['key'] in _change_sync_busy:
+				_change_sync_dirty.add(source['key'])
+				return False
 			_change_sync_busy.add(source['key'])
 		def _run():
-			try: _tmdb_sync_source(source, None, allow_pick=False)
+			try:
+				while True:
+					with _change_sync_lock: _change_sync_dirty.discard(source['key'])
+					_tmdb_sync_source(source, None, allow_pick=False)
+					with _change_sync_lock:
+						if source['key'] not in _change_sync_dirty: break
 			except Exception as e: kodi_utils.logger('TMDb Sync', 'on change failed: %s' % e)
 			finally:
-				with _change_sync_lock: _change_sync_busy.discard(source['key'])
+				with _change_sync_lock:
+					_change_sync_busy.discard(source['key'])
+					_change_sync_dirty.discard(source['key'])
 		Thread(target=_run, daemon=True).start()
 		return True
 	except Exception as e:
@@ -717,29 +875,34 @@ def tmdb_poll_lists(params=None):
 	This is the cheap check that makes a short interval affordable. TMDb returns a
 	last-changed marker per list, so an idle poll is a single small request, no list
 	downloads, no database writes and no widget redraw.
+
+	Watchlist and Favorites have no such marker, so each of the four costs one more small
+	request (its size and newest page). Only a shelf whose answer moved is read in full.
 	"""
 	from caches import list_sync_cache
 	if not tmdblist_user_active(): return 'no account'
 	sources = [i for i in _tmdb_send_sources() if _tmdb_source_link(i)]
 	if not sources: return 'nothing linked'
-	tmdb_lists_cache.clear_all_lists()
-	user_lists = tmdb_list_api.get_user_lists() or []
-	if isinstance(user_lists, dict): user_lists = user_lists.get('results') or []
-	if not user_lists: return 'failed'
 	stamps = {}
-	for item in user_lists:
-		list_id = str(item.get('id'))
-		# number_of_items covers the case of a list edited twice within one timestamp tick.
-		stamps[list_id] = '%s|%s' % (item.get('updated_at') or '', item.get('number_of_items') or item.get('item_count') or '')
+	if any(i['kind'] != 'account' for i in sources):
+		tmdb_lists_cache.clear_all_lists()
+		user_lists = tmdb_list_api.get_user_lists() or []
+		if isinstance(user_lists, dict): user_lists = user_lists.get('results') or []
+		for item in user_lists:
+			list_id = str(item.get('id'))
+			# number_of_items covers the case of a list edited twice within one timestamp tick.
+			stamps[list_id] = '%s|%s' % (item.get('updated_at') or '', item.get('number_of_items') or item.get('item_count') or '')
 	changed = False
 	for source in sources:
 		list_id = str(_tmdb_source_link(source))
-		stamp = stamps.get(list_id)
+		if source['kind'] == 'account': stamp = _tmdb_account_stamp(source['list_type'], source['media_type'])
+		else: stamp = stamps.get(list_id)
 		if stamp is None: continue
 		if stamp == list_sync_cache.get_remote_stamp(_TMDB_SYNC_SERVICE, source['key']): continue
 		_, source_changed = _tmdb_sync_source(source, None, allow_pick=False)
 		changed = changed or source_changed
-		list_sync_cache.set_remote_stamp(_TMDB_SYNC_SERVICE, source['key'], list_id, stamp)
+		# An account shelf stamps itself at the end of a successful sync.
+		if source['kind'] != 'account': list_sync_cache.set_remote_stamp(_TMDB_SYNC_SERVICE, source['key'], list_id, stamp)
 	if changed: kodi_utils.kodi_refresh()
 	return 'success'
 
@@ -775,7 +938,8 @@ def tmdb_sync_lists(params=None, silent=False):
 		rows.append({'label': '[B]Sync all %s linked lists now[/B]' % linked_count, 'source': None})
 	for source in sources:
 		target = _tmdb_source_link(source)
-		name = next((i.get('name') for i in user_lists if str(i.get('id')) == str(target)), None) if target else None
+		if source['kind'] == 'account': name = 'TMDb' if target else None
+		else: name = next((i.get('name') for i in user_lists if str(i.get('id')) == str(target)), None) if target else None
 		status = '[COLOR lime]<-> %s[/COLOR]' % name if name else '[COLOR grey]not linked[/COLOR]'
 		rows.append({'label': '%s [I](x%s)[/I]  %s' % (source['label'], source['total'], status), 'source': source})
 	display = [{'line1': i['label']} for i in rows]

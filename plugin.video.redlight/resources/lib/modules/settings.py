@@ -36,8 +36,8 @@ def simkl_user_active():
 	return user not in (None, 'empty_setting', '') and token not in (None, '0', '', 'empty_setting')
 
 def remove_favorite_when_watched():
-	"""Marking something watched drops it from Favourites, keeping that shelf as
-	'not seen yet'. Personal lists are never touched by it."""
+	"""Marking something watched drops it from Mona and the TMDb Watchlist, keeping
+	those shelves as 'not seen yet'. TMDb Favorites and personal lists are never touched."""
 	return get_setting('redlight.favorites.remove_when_watched', 'true') == 'true'
 
 def provider_enabled(name):

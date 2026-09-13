@@ -483,20 +483,24 @@ def set_bookmark(params, remote=True):
 	except: pass
 
 def _drop_from_favorites(action, media_type, tmdb_id):
-	"""Marking something watched removes it from Favourites.
+	"""Marking something watched removes it from Mona and from the TMDb Watchlist.
 
 	Keyed on the ACT of marking, not on watched state: adding an already watched
-	title to Favourites leaves it there until it is marked watched again. Only
-	Favourites is affected - personal lists are left alone.
+	title leaves it there until it is marked watched again. TMDb Favorites and
+	personal lists are left alone.
 	"""
 	try:
 		if action != 'mark_as_watched' or not tmdb_id: return
 		if not settings.remove_favorite_when_watched(): return
 		from caches.favorites_cache import favorites_cache
-		if not any(i['tmdb_id'] == str(tmdb_id) for i in favorites_cache.get_favorites(media_type)): return
-		if not favorites_cache.delete_favourite(media_type, str(tmdb_id), ''): return
-		from indexers.tmdb_lists import tmdb_sync_after_change
-		tmdb_sync_after_change('favorites', media_type=media_type)
+		# 'tmdb_watchlist_<movie|tvshow>' is tmdb_lists.tmdb_shelf_db_type, spelled out so the
+		# common case - title on neither shelf - never imports the list indexers.
+		for db_type, kind in ((media_type, 'favorites'), ('tmdb_watchlist_%s' % media_type, 'account')):
+			if not any(i['tmdb_id'] == str(tmdb_id) for i in favorites_cache.get_favorites(db_type)): continue
+			if not favorites_cache.delete_favourite(db_type, str(tmdb_id), ''): continue
+			from indexers.tmdb_lists import tmdb_sync_after_change
+			if kind == 'account': tmdb_sync_after_change('account', media_type=media_type, list_type='watchlist')
+			else: tmdb_sync_after_change('favorites', media_type=media_type)
 	except Exception as e:
 		from modules.kodi_utils import logger
 		logger('Favourites', 'auto remove skipped: %s' % e)
