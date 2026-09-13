@@ -919,8 +919,10 @@ def tmdb_sync_lists(params=None, silent=False):
 	if not sources:
 		if not silent: kodi_utils.notification('Nothing to sync', 3000)
 		return 'nothing'
-	user_lists = tmdb_list_api.get_user_lists() or []
-	if isinstance(user_lists, dict): user_lists = user_lists.get('results') or []
+	user_lists = tmdb_list_api.get_user_lists()
+	if isinstance(user_lists, dict): user_lists = user_lists.get('results')
+	# None = the fetch failed. It must not reach _tmdb_sync_source as a list, or every linked
+	# list would look deleted on TMDb and be unlinked with its snapshot wiped.
 	if silent:
 		linked = [i for i in sources if _tmdb_source_link(i)]
 		if not linked: return 'nothing linked'
@@ -932,6 +934,10 @@ def tmdb_sync_lists(params=None, silent=False):
 		# is the one cost that shows up on screen.
 		if changed: kodi_utils.kodi_refresh()
 		return 'success'
+	# The dialog names each link and offers lists to pick from, so it needs a real answer.
+	if user_lists is None:
+		kodi_utils.notification('Could not reach TMDb, try again later', 3000)
+		return 'failed'
 	linked_count = len([i for i in sources if _tmdb_source_link(i)])
 	rows = []
 	if linked_count:

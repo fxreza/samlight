@@ -81,5 +81,5 @@ def tmdb_lists_cache_object(function, string, args, json=False, expiration=24):
 	else: args = (args,)
 	if json: result = function(*args).json()
 	else: result = function(*args)
-	tmdb_lists_cache.set(string, result, expiration=expiration)
+	if result is not None: tmdb_lists_cache.set(string, result, expiration=expiration)
 	return result

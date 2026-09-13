@@ -100,22 +100,26 @@ class TMDbListAPI:
 		return notification(notice)
 
 	def get_user_lists(self):
+		# None means the fetch failed (network, outage, error body, a lost page) and is not cached.
+		# The sync reads a linked list missing from this as "deleted on TMDb", so a partial or
+		# failed answer must never pass for "the account has no lists".
 		def _process_multi(page_no):
 			try: results_extend(self.request_data(url % (self.base_url, account_id, page_no))['results'])
-			except: pass
+			except: failed.append(page_no)
 		def _process(dummy):
 			result = self.request_data(url % (self.base_url, account_id, 1))
-			if not result: return results
-			results_extend(result.get('results') or [])
+			if not isinstance(result, dict) or not isinstance(result.get('results'), list): return None
+			results_extend(result['results'])
 			total_pages = result.get('total_pages') or 1
 			if total_pages > 1:
 				threads = TaskPool().tasks(_process_multi, range(2, total_pages + 1), max_threads())
 				[i.join() for i in threads]
+			if failed: return None
 			return results
 		account_id = get_setting('redlight.tmdb.account_id')
 		string = 'get_user_lists'
 		url = '%s/account/%s/lists?page=%s'
-		results = []
+		results, failed = [], []
 		results_extend = results.extend
 		return tmdb_lists_cache_object(_process, string, 'dummy')
 
