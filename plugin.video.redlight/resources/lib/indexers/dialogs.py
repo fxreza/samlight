@@ -1611,7 +1611,7 @@ def options_menu_choice(params, meta=None):
 		if settings.tmdblist_user_active(): listing_append(('TMDb Lists Manager', '', 'tmdblists_manager_choice'))
 		if settings.trakt_user_active(): listing_append(('Trakt Lists Manager', '', 'trakt_manager'))
 		listing_append(('Personal Lists Manager', '', 'personallists_manager_choice'))
-		listing_append(('Favorites Manager', '', 'favorites_manager_choice'))
+		listing_append(('Mona Manager', '', 'favorites_manager_choice'))
 	if menu_type == 'tvshow': listing_append(('Play Random', 'Based On %s' % rootname, 'random'))
 	if menu_type in ('tvshow', 'season'):
 		listing_append(('Assign an Episode Group to %s' % rootname, 'Currently %s' % episode_groups_cache.get(tmdb_id).get('name', 'None'), 'episode_group'))

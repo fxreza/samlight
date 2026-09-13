@@ -427,7 +427,7 @@ def build_single_episode(list_type, params={}):
 			if trakt_manager_params: cm_append(['trakt_manager', ('[B]Trakt Lists Manager[/B]', 'RunPlugin(%s)' % trakt_manager_params)])
 			settings.append_list_shortcut_context_menus(cm_append, build_url, cm_sort_order, 'tvshow', tmdb_id, imdb_id, tvdb_id, title, show_poster)
 			cm_append(['personal_manager', ('[B]Personal Lists Manager[/B]', 'RunPlugin(%s)' % personal_manager_params)])
-			cm_append(['favorites_manager', ('[B]Favorites Manager[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
+			cm_append(['favorites_manager', ('[B]Mona Manager[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
 			if not unaired:
 				if playcount:
 					cm_append(['mark_watched', ('[B]Mark Unwatched[/B]', 'RunPlugin(%s)' % build_url({'mode': 'watched_status.mark_episode', 'action': 'mark_as_unwatched',
