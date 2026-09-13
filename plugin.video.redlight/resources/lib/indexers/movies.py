@@ -274,6 +274,7 @@ class Movies:
 				cm_append(['extras', ('[B]Play[/B]', 'RunPlugin(%s)' % play_params)])
 			if not item_open_extras or movieset_active:
 				cm_append(['extras', ('[B]Extras[/B]', 'RunPlugin(%s)' % extras_params)])
+			settings.append_trailer_cm(cm_append, self.build_url, meta_get('trailer'))
 			if movieset_active:
 				url_params = self.build_url({'mode': 'open_movieset_choice', 'key_id': movieset_id, 'name': movieset_name, 'is_external': self.is_external})
 			elif item_open_extras:

@@ -300,6 +300,7 @@ class TVShows:
 				cm_append(['extras', ('[B]Browse[/B]', 'Container.Update(%s)' % url_params)])
 				url_params = extras_params
 			else: cm_append(['extras', ('[B]Extras[/B]', 'RunPlugin(%s)' % extras_params)])
+			settings.append_trailer_cm(cm_append, self.build_url, trailer)
 			cm_append(['options', ('[B]Options[/B]', 'RunPlugin(%s)' % options_params)])
 			# Browse TV Seasons on the show itself. The catalogue has always offered this
 			# entry, but only episodes ever appended it, so on a show it had nowhere to

@@ -944,6 +944,11 @@ def append_external_scraper_settings_cm(cm_append, build_url_fn):
 	cm_append(['external_scraper_settings', ('[B]%s[/B]' % external_scraper_settings_tools_label(),
 		'RunPlugin(%s)' % build_url_fn({'mode': 'open_external_scraper_settings'}))])
 
+def append_trailer_cm(cm_append, build_url_fn, trailer):
+	# Only when TMDb has a YouTube trailer; season/episode rows carry str(meta trailer), so 'None' can appear.
+	if trailer in (None, '', 'None'): return
+	cm_append(['trailer', ('[B]Trailer[/B]', 'RunPlugin(%s)' % build_url_fn({'mode': 'trailer_choice', 'url': trailer}))])
+
 def append_cm_if_enabled(cm_append, cm_sort_order, key, label, command):
 	# Opt-in shortcuts must gate on enabled membership — stock menus show every cm_append.
 	if key not in (cm_sort_order or {}): return
@@ -1358,7 +1363,7 @@ def rescrape_action_value(action, default='0'):
 	return int(get_setting('redlight.rescrape.%s' % action, default))
 
 def cm_enabled():
-	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,random_continual,recommended,related,more_like_this,similar,in_trakt_list,' \
+	default = 'extras,trailer,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,random_continual,recommended,related,more_like_this,similar,in_trakt_list,' \
 				'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,tmdb_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'
 	setting = get_setting('redlight.context_menu.enabled', default)
 	if setting in ('', None, 'noop', '[]'): return default.split(',')
@@ -1433,6 +1438,26 @@ def migrate_random_continual_cm_for_upgrade(had_existing_settings):
 		if item in parts: continue
 		if 'browse_episodes' in parts: parts.insert(parts.index('browse_episodes') + 1, item)
 		else: parts.append(item)
+		set_setting(setting_key, ','.join(parts))
+		changed = True
+	return changed
+
+def migrate_trailer_cm_for_upgrade(had_existing_settings):
+	"""Retro-fit the Trailer entry onto an existing saved menu, right after Extras.
+
+	A stored context_menu.enabled beats the shipped default, so a new entry stays
+	invisible without this.
+	"""
+	if get_setting('redlight.trailer.cm_migrated', 'false') == 'true': return False
+	set_setting('trailer.cm_migrated', 'true')
+	if not had_existing_settings: return False
+	item, changed = 'trailer', False
+	for setting_key in ('context_menu.enabled', 'context_menu.order'):
+		raw = get_setting('redlight.%s' % setting_key, '')
+		if raw in ('', None, 'noop', '[]'): continue
+		parts = [p for p in raw.split(',') if p]
+		if item in parts: continue
+		parts.insert(parts.index('extras') + 1 if 'extras' in parts else 0, item)
 		set_setting(setting_key, ','.join(parts))
 		changed = True
 	return changed
@@ -1543,7 +1568,7 @@ def migrate_cm_manager_order_for_upgrade():
 	return get_setting('redlight.context_menu.order', '') != before
 
 def cm_current_order():
-	default = 'extras,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,random_continual,recommended,related,more_like_this,similar,in_trakt_list,' \
+	default = 'extras,trailer,options,playback_options,external_scraper_settings,browse_movie_set,browse_seasons,browse_episodes,random_continual,recommended,related,more_like_this,similar,in_trakt_list,' \
 				'mdblist_manager,punchplay_manager,simkl_manager,tmdb_manager,trakt_manager,personal_manager,favorites_manager,tmdb_send_lists,mark_watched,unmark_previous_episode,exit,refresh,reload'
 	setting = get_setting('redlight.context_menu.order', default)
 	if setting in ('', None, 'noop', '[]'): order = default.split(',')

@@ -56,7 +56,7 @@ def extras_items():
 
 def context_menu_items():
 	return [
-	{'name': 'Extras', 'value': 'extras'}, {'name': 'Options', 'value': 'options'}, {'name': 'Play Options', 'value': 'playback_options'},
+	{'name': 'Extras', 'value': 'extras'}, {'name': 'Trailer', 'value': 'trailer'}, {'name': 'Options', 'value': 'options'}, {'name': 'Play Options', 'value': 'playback_options'},
 	{'name': 'Select Source', 'value': 'select_source'}, {'name': 'Rescrape & Select Source', 'value': 'rescrape_select_source'},
 	{'name': 'External Scraper Settings', 'value': 'external_scraper_settings'},
 	{'name': 'Browse Movie Set', 'value': 'browse_movie_set'}, {'name': 'Browse TV Seasons', 'value': 'browse_seasons'}, {'name': 'Random Play', 'value': 'random_continual'},

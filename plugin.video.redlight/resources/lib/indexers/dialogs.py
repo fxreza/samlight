@@ -1727,6 +1727,14 @@ def extras_menu_choice(params):
 	open_window(('windows.extras', 'Extras'), 'extras.xml', meta=meta, is_external=params.get('is_external', 'true' if kodi_utils.external() else 'false'),
 															options_media_type=media_type, starting_position=params.get('starting_position', None))
 
+def trailer_choice(params):
+	# Context menu Trailer: plays the TMDb YouTube trailer the list item already carries.
+	url = params.get('url', '')
+	if not url.startswith('plugin://plugin.video.youtube/'): return kodi_utils.notification('No trailer available')
+	if not kodi_utils.addon_installed('plugin.video.youtube') or not kodi_utils.addon_enabled('plugin.video.youtube'):
+		return kodi_utils.notification('Youtube Plugin needed for playback')
+	kodi_utils.kodi_player().play(url)
+
 def open_movieset_choice(params):
 	kodi_utils.hide_busy_dialog()
 	window_function = kodi_utils.activate_window if params['is_external'] in (True, 'True', 'true') else kodi_utils.container_update
