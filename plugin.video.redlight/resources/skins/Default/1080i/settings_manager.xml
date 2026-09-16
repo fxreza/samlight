@@ -1693,13 +1693,6 @@
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=mdblist.mdblist_revoke_authentication)</onclick>
                       </item>
                       <item>
-                          <property name="setting_label">Remove from Mona and Watchlist When Watched</property>
-                          <property name="setting_type">boolean</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.favorites.remove_when_watched)]</property>
-                          <property name="setting_description">Marking a movie watched, or any episode of a show watched, removes it from Mona and from your TMDb Watchlist. Adding an already watched title leaves it there until you mark it watched again. TMDb Favorites and personal lists are never affected.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=favorites.remove_when_watched)</onclick>
-                      </item>
-                      <item>
                           <visible>Container(2000).HasFocus(50)</visible>
                           <property name="setting_label">    - Enable MDBList</property>
                           <property name="setting_type">boolean</property>
@@ -2268,11 +2261,20 @@
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_numeric&amp;setting_id=tmdb.list_poll_minutes)</onclick>
                       </item>
                       <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
                           <property name="setting_label">    - Sync Straight After a Change</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.tmdb.list_sync_on_change)]</property>
                           <property name="setting_description">Push an add or remove up to TMDb as soon as you make it, in the background. Only the list you changed is touched.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=tmdb.list_sync_on_change)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(50)</visible>
+                          <property name="setting_label">Remove from Mona and Watchlist When Watched</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.favorites.remove_when_watched)]</property>
+                          <property name="setting_description">Marking a movie watched, or any episode of a show watched, removes it from Mona and from your TMDb Watchlist. Adding an already watched title leaves it there until you mark it watched again. TMDb Favorites and personal lists are never affected.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=favorites.remove_when_watched)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(50)</visible>
