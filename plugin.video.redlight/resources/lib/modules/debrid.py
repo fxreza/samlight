@@ -470,11 +470,12 @@ def stamp_torrent_cache(results, active_debrid, cache_check_override=None, data=
 	monitor = kodi_monitor() if progress_dialog and not background else None
 
 	def _unchecked_batch(provider, reason):
+		# Failed cache check: drop rows instead of listing them as Unchecked (see external.py).
 		try:
-			logger('DebridCacheCheck', 'native fallback=unchecked provider=%s reason=%s total=%d' % (provider, reason, len(native)))
+			logger('DebridCacheCheck', 'native fallback=dropped provider=%s reason=%s total=%d' % (provider, reason, len(native)))
 		except Exception:
 			pass
-		return [dict(i, **{'cache_provider': 'Unchecked %s' % provider, 'debrid': provider}) for i in native]
+		return []
 
 	def _commit(provider, batch):
 		with final_lock:

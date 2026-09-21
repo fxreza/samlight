@@ -409,13 +409,14 @@ class source:
 		def _providers_with_rows():
 			return set(i.get('debrid') for i in final_results if i.get('debrid'))
 		def _unchecked_batch(provider, reason):
-			if not self.background:
-				self.process_quality_count_final(results)
-			batch = [dict(i, **{'cache_provider': 'Unchecked %s' % provider, 'debrid': provider}) for i in results]
+			# Cache check was requested but failed: drop this provider's rows rather than
+			# listing them as Unchecked. Autoplay treats Unchecked rows as playable and walks
+			# uncached torrents one by one. Unchecked rows only appear when the user rescrapes
+			# with the cache check explicitly disabled (cache_check_override False).
 			try:
-				kodi_utils.logger('DebridCacheCheck', 'fallback=unchecked provider=%s reason=%s total=%d' % (provider, reason, len(batch)))
+				kodi_utils.logger('DebridCacheCheck', 'fallback=dropped provider=%s reason=%s total=%d' % (provider, reason, len(results)))
 			except: pass
-			return batch
+			return []
 		def _commit_cache_batch(provider, batch):
 			with final_lock:
 				if provider in frozen_providers:
