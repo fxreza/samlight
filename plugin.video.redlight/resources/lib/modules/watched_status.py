@@ -78,6 +78,35 @@ def hide_unhide_progress_items(params):
 	watched_info = watched_db.execute('INSERT OR REPLACE INTO watched_status VALUES (?, ?, ?)', ('hidden_progress_items', 'hidden', repr(current_items),))
 	if refresh: kodi_refresh()
 
+def drop_undrop_tvshow(params):
+	"""Context menu Drop/Undrop TV Show, on whichever service tracks watched status."""
+	watched_indicators = settings.watched_indicators()
+	action = 'drop' if params.get('action') == 'drop' else 'undrop'
+	media_id = int(params['tmdb_id'])
+	data = {'action': action, 'media_type': 'shows', 'media_id': media_id, 'section': 'dropped',
+			'imdb_id': params.get('imdb_id'), 'tvdb_id': params.get('tvdb_id', 'None')}
+	if watched_indicators == 0:
+		# The local list is a plain python list: guard against a double drop or a missing undrop.
+		is_dropped = media_id in (get_hidden_progress_items(0) or [])
+		if is_dropped != (action == 'drop'): hide_unhide_progress_items(data)
+		else: kodi_refresh()
+		return notification('TV Show Dropped' if action == 'drop' else 'TV Show Undropped', 3000)
+	if watched_indicators == 2:
+		from apis.simkl_api import simkl_hide_unhide_progress_items
+		return simkl_hide_unhide_progress_items(data)
+	if watched_indicators == 3:
+		from apis.mdblist_api import mdblist_hide_unhide_progress_items
+		return mdblist_hide_unhide_progress_items(data)
+	if watched_indicators == 4:
+		# PunchPlay's call only reports success; refresh and notify here.
+		from apis.punchplay_api import punchplay_hide_unhide_progress_items
+		from modules.kodi_utils import notify_error
+		if not punchplay_hide_unhide_progress_items(data): return notify_error()
+		kodi_refresh()
+		return notification('TV Show Dropped' if action == 'drop' else 'TV Show Undropped', 3000)
+	from apis.trakt_api import hide_unhide_progress_items as trakt_hide_unhide_progress_items
+	return trakt_hide_unhide_progress_items(data)
+
 def get_last_played_value(watched_indicators):
 	if watched_indicators == 0: return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 	else: return datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000Z')

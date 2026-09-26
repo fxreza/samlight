@@ -156,6 +156,9 @@ def routing(sys):
 		elif mode == 'watched_status.unmark_previous_episode':
 			from modules.watched_status import unmark_previous_episode
 			return unmark_previous_episode(params)
+		elif mode == 'watched_status.drop_undrop_tvshow':
+			from modules.watched_status import drop_undrop_tvshow
+			return drop_undrop_tvshow(params)
 	elif 'search.' in mode:
 		if mode == 'search.get_key_id':
 			from modules.search import get_key_id

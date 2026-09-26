@@ -324,6 +324,7 @@ class TVShows:
 			cm_append(['random_continual', ('[B]Random Play[/B]', 'RunPlugin(%s)' % self.build_url(
 				{'mode': 'random_continual_choice', 'tmdb_id': tmdb_id}))])
 			cm_append(['favorites_manager', ('[B]Remove from Mona[/B]' if str(tmdb_id) in self.favorite_ids else '[B]Add to Mona[/B]', 'RunPlugin(%s)' % favorites_manager_params)])
+			settings.append_drop_tvshow_cm(cm_append, self.build_url, tmdb_id, imdb_id, tvdb_id, str(tmdb_id) in self.dropped_ids)
 			if playcount:
 				if self.widget_hide_watched: return
 			elif not unaired:
@@ -388,6 +389,9 @@ class TVShows:
 		self.cm_sort_order = settings.cm_sort_order()
 		self.custom_cm_menu = self.cm_sort_order != settings.cm_default_order()
 		self.watched_indicators = settings.watched_indicators()
+		# Dropped shows (hidden from Next Episodes) so the menu offers Drop or Undrop. Ids are ints or strings by provider.
+		self.dropped_ids = set(str(i) for i in (watched_status.get_hidden_progress_items(self.watched_indicators) or [])) \
+							if 'drop_tvshow' in self.cm_sort_order else set()
 		self.skip_inprogress = settings.media_open_action_skip_inprogress_tvshow()
 		watched_db = watched_status.get_database(self.watched_indicators)
 		self.in_progress_show_ids = watched_status.get_in_progress_tvshow_ids(watched_db) if self.skip_inprogress else set()
