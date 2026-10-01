@@ -1217,7 +1217,6 @@ def playback_choice(params):
 	aliases = get_aliases_titles(make_alias_dict(meta, meta['title']))
 	check_cache_status, check_cache_toggle = ('OFF', 'false') if settings.any_external_cache_check() else ('ON', 'true')
 	items = []
-	if media_type == 'episode': items.append({'line': 'Play # Episodes', 'function': 'play_number_eps'})
 	items.extend([{'line': 'Select Source', 'function': 'scrape'},
 			{'line': 'Rescrape & Select Source', 'function': 'clear_and_rescrape'}])
 	if debrid_cache_check_available():
@@ -1609,8 +1608,6 @@ def options_menu_choice(params, meta=None):
 		if settings.punchplay_user_active(): listing_append(('PunchPlay Manager', '', 'punchplay_manager'))
 		if settings.simkl_user_active(): listing_append(('Simkl Lists Manager', '', 'simkl_manager'))
 		if settings.tmdblist_user_active(): listing_append(('TMDb Lists Manager', '', 'tmdblists_manager_choice'))
-		if settings.trakt_user_active(): listing_append(('Trakt Lists Manager', '', 'trakt_manager'))
-		listing_append(('Personal Lists Manager', '', 'personallists_manager_choice'))
 		listing_append(('Mona Manager', '', 'favorites_manager_choice'))
 	if menu_type == 'tvshow': listing_append(('Play Random', 'Based On %s' % rootname, 'random'))
 	if menu_type in ('tvshow', 'season'):

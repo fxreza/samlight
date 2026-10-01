@@ -142,19 +142,9 @@ class Navigator:
 		return self.my_lists()
 
 	def my_lists(self):
-		# Authorised services A–Z, then public/local discovery.
-		if s.mdblist_user_active():
-			self._safe_add({'mode': 'navigator.mdblist_lists'}, 'MDBList Lists', 'mdblist')
-		if s.punchplay_user_active():
-			self._safe_add({'mode': 'navigator.punchplay_lists'}, 'PunchPlay Lists', 'punchplay')
-		# Always show Simkl Lists so Public Calendar stays reachable without auth (Trakt Public Lists pattern).
-		self._safe_add(self._simkl_lists_menu(), 'Simkl Lists', 'simkl')
 		if s.tmdblist_user_active(): self._safe_add({'mode': 'navigator.tmdb_lists_personal'}, 'TMDb Lists', 'tmdb')
 		if s.trakt_user_active(): self._safe_add({'mode': 'navigator.trakt_lists_personal'}, 'Trakt Lists', 'trakt')
 		self._safe_add({'mode': 'navigator.trakt_lists_public'}, 'Trakt Public Lists', 'trakt')
-		self._safe_add({'mode': 'personal_lists.get_personal_lists'}, 'Personal Lists', 'lists')
-		self._safe_add({'mode': 'navigator.discover_contents', 'media_type': 'movie', 'show_new': 'false'}, 'Discover Lists (Movies)', 'movies')
-		self._safe_add({'mode': 'navigator.discover_contents', 'media_type': 'tvshow', 'show_new': 'false'}, 'Discover Lists (TV Shows)', 'tv')
 		self._set_submenu_exit_params()
 		self.end_directory()
 

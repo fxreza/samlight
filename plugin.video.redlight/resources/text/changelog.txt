@@ -1,3 +1,9 @@
+[COLOR red][B]Version 2.4.3[/B][/COLOR]
+- [B]Playback Options[/B]: [B]Play # Episodes[/B] removed.
+- [B]My Lists[/B]: only [B]TMDb Lists[/B], [B]Trakt Lists[/B] and [B]Trakt Public Lists[/B] remain. MDBList, PunchPlay, Simkl, Personal Lists and Discover Lists are gone from this menu.
+- [B]Options[/B] (context menu): [B]Trakt Lists Manager[/B] and [B]Personal Lists Manager[/B] removed.
+- [B]Settings[/B]: Meta Accounts no longer shows MDBList, PunchPlay, Simkl or WeTrakr ([B]Enable Trakt[/B] moved into the Trakt section). Content no longer shows Personal Lists. General no longer shows Downloads.
+
 [COLOR red][B]Version 2.4.2[/B][/COLOR]
 - [B]Internal Scrapers[/B]: [B]AnimeTosho[/B], [B]StremThru Torz[/B] and [B]Torrentio[/B] join Comet and Nyaa (Settings > Torrent Sources > Internal Scrapers, off by default). Turn on [B]Enable[/B], then Indexers ([B]AnimeTosho (Anime)[/B], [B]Nyaa (Anime)[/B]) and/or Sites ([B]Comet[/B], [B]StremThru Torz[/B], [B]Torrentio[/B]). They run in the main scrape (no Check Before Full Search), with or without External Scrapers. Results show [B]Indexer: AnimeTosho / Nyaa[/B] or [B]Site: Comet / Torz / Torrentio[/B] and [B]Scraper: Internal[/B]. Indexers are anime name search; Sites are IMDb-scoped. They use the same debrid [B]Check Cached Status[/B] as External Scrapers. Clear Internal Scrapers Cache after changing host or category. Tips: Internal vs External cache clears stay separate; Multi Scrapers notes internals are not slots.
 - [B]Debrid[/B]: [B]Check Cached Status[/B] and [B]Include Uncached Results[/B] no longer say External Scrapers. They apply to Internal Scrapers as well, and show when Internal and/or External Scrapers are enabled. [B]Add Resolved Debrid Cache to Cloud[/B] uses the same gate; TorBox also shows it when NZB Indexers are on.
