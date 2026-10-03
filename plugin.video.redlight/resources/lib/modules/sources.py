@@ -2776,6 +2776,15 @@ class Sources():
 						if self.cancel_all_playback or self._resolve_user_cancelled:
 							break
 						if self.playback_successful: break
+						# The stream dropped mid-playback and the network is back: play this source
+						# again (fresh link) before the next ones. The player already moved
+						# playback_percent to the drop point; show the loading screen meanwhile.
+						if getattr(self, '_retry_dropped_source', False):
+							self._retry_dropped_source = False
+							self.background = False
+							items.insert(count, dict(item))
+							if not self.progress_dialog: self._make_progress_dialog()
+							self._prepare_resolve_ui()
 						# Next queued source — drop Kodi's native playback-failed confirm if it lingered.
 						if count < len(items):
 							try: kodi_utils.close_dialog('okdialog')

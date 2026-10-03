@@ -37,6 +37,12 @@ _INTRO_CHAPTER_MIN_SEGMENT_SEC = 10
 _INTRO_CHAPTER_MIN_END_SEC = 15
 _INTRO_SKIP_POST_END_GRACE_SEC = 20
 _INTRO_SKIP_SEEK_SETTLE_MS = 250
+# Mid-playback stream drop (network loss): Kodi ends the file this far before the real
+# end, or the picture freezes this long while not paused.
+_DROP_MIN_REMAINING_SEC = 300
+_STALL_SEC = 30
+_RECONNECT_MAX = 5
+_RECONNECT_NETWORK_WAIT_SEC = 90
 
 class RedLightPlayer(xbmc.Player):
 	def __init__ (self):
@@ -72,10 +78,14 @@ class RedLightPlayer(xbmc.Player):
 			pass
 
 	def onPlayBackStopped(self):
-		self._user_stopped = True
+		self._playback_end_seen = True
+		# A stop Red Light made itself on a frozen stream is not the user's.
+		if not getattr(self, '_stall_stopping', False): self._user_stopped = True
 		self._maybe_show_nextep_handoff_cover()
 
 	def onPlayBackEnded(self):
+		self._playback_end_seen = True
+		self._playback_ended = True
 		self._maybe_show_nextep_handoff_cover()
 
 	def run(self, url=None, obj=None):
@@ -338,6 +348,10 @@ class RedLightPlayer(xbmc.Player):
 	def monitor(self):
 		playback_superseded = False
 		self._user_stopped = False
+		self._playback_end_seen, self._playback_ended = False, False
+		self._stall_stopping, self._stall_detected = False, False
+		self._stall_pos, self._stall_since = None, 0.0
+		self._reconnect_on_drop = st.reconnect_on_drop()
 		try:
 			ensure_dialog_dead, total_check_time = False, 0
 			if self.media_type == 'episode':
@@ -407,13 +421,17 @@ class RedLightPlayer(xbmc.Player):
 									_monitor_sleep_ms = _NEXTEP_CLOSE_POLL_MS
 						except:
 							pass
-					ku.sleep(_monitor_sleep_ms)
+					self._monitor_wait(_monitor_sleep_ms)
 					if not self._refresh_playback_position(allow_stale=False):
+						if self._playback_end_seen and not self.isPlayingVideo(): continue
 						ku.sleep(250)
 						continue
 					if not self._valid_playback_duration(self.total_time, self.curr_time):
 						ku.sleep(250)
 						continue
+					if self._reconnect_on_drop and self._stream_stalled():
+						self._stop_stalled_stream()
+						break
 					if not getattr(self, '_intro_skip_fetch_started', False):
 						self._intro_skip_fetch_started = True
 						self._start_intro_skip_fetch()
@@ -460,6 +478,8 @@ class RedLightPlayer(xbmc.Player):
 				self.clear_playback_properties(clear_navigation=False)
 				self._release_active_playback()
 				return
+			if loop_ran and not playback_superseded and self._reconnect_on_drop and self._stream_dropped():
+				if self._reconnect_dropped_stream(): return
 			try:
 				_remaining = None
 				if getattr(self, 'total_time', None) not in (None, '', 0, 0.0) and getattr(self, 'curr_time', None) not in (None, ''):
@@ -949,6 +969,137 @@ class RedLightPlayer(xbmc.Player):
 		key = self._playback_meta_key()
 		if key and ku.get_property(PROP_ACTIVE_PLAYBACK_KEY) == key:
 			ku.clear_property(PROP_ACTIVE_PLAYBACK_KEY)
+
+	def _monitor_wait(self, ms):
+		# Sleep in short slices and wake as soon as playback ends, so the local progress
+		# save lands before Kodi rebuilds the home widgets.
+		deadline = time.time() + ms / 1000.0
+		while time.time() < deadline:
+			if self._playback_end_seen and not self.isPlayingVideo(): return
+			ku.sleep(100)
+
+	def _stream_stalled(self):
+		'''The picture has not moved for _STALL_SEC while not paused: Kodi is stuck
+		waiting on a dead connection (seen after a short Wi-Fi drop).'''
+		try:
+			# Live position: curr_time holds still after a rewind on purpose.
+			pos = float(self.getTime())
+			paused = ku.get_visibility('Player.Paused')
+		except Exception:
+			return False
+		now = time.time()
+		if paused or self._stall_pos is None or abs(pos - self._stall_pos) > 0.5:
+			self._stall_pos, self._stall_since = pos, now
+			return False
+		return now - self._stall_since >= _STALL_SEC
+
+	def _stop_stalled_stream(self):
+		ku.logger('Red Light', 'Stream frozen for %ss at %.1fs: stopping it to reconnect' % (_STALL_SEC, self._stall_pos or 0.0))
+		self._stall_detected = self._stall_stopping = True
+		try: self.stop()
+		except: pass
+		for _ in range(50):
+			if not self.isPlayingVideo(): break
+			ku.sleep(100)
+
+	def _stream_dropped(self):
+		'''Playback ended mid-stream without the user stopping it: Red Light stopped a
+		frozen stream, or Kodi ran out of data and ended the file well before its end.'''
+		if getattr(self, 'random_continual_triggered', False): return False
+		if self._stall_detected: return True
+		if self._user_stopped: return False
+		try: remaining = float(self.total_time) - float(self.curr_time)
+		except Exception: return False
+		if remaining <= _DROP_MIN_REMAINING_SEC: return False
+		if not self._playback_ended:
+			ku.sleep(300) # let a late Stop / End callback land
+		return self._playback_ended and not self._user_stopped
+
+	def _reconnect_dropped_stream(self):
+		'''Save the spot, wait for the network, then hand back to the resolve queue: it
+		plays the same source again with a fresh link, then the next sources, resuming
+		just before the drop. False leaves the normal stop path to save progress.'''
+		so = self.sources_object
+		attempts = getattr(so, '_reconnect_attempts', 0)
+		try:
+			total = float(self.total_time)
+			dropped_at = float(self._stall_pos if self._stall_detected and self._stall_pos else self.curr_time)
+			resume_at = max(dropped_at - 10.0, 0.0)
+		except Exception:
+			return False
+		ku.logger('Red Light', 'Stream %s at %.1fs of %.1fs (reconnect %s of %s)' % (
+			'froze' if self._stall_detected else 'ended early', resume_at, total, attempts + 1, _RECONNECT_MAX))
+		if attempts >= _RECONNECT_MAX:
+			ku.notification('Connection lost. Progress saved', 5000)
+			return False
+		# Ending at the same spot again means the file itself stops there (a wrong
+		# duration), not the network: replaying would loop.
+		last_drop = getattr(so, '_last_drop_at', None)
+		if last_drop is not None and abs(dropped_at - last_drop) < 60:
+			ku.logger('Red Light', 'Stream ended at the same spot again: not reconnecting')
+			return False
+		so._last_drop_at = dropped_at
+		if not self._wait_for_network():
+			return False
+		try:
+			ws.set_bookmark({'media_type': self.media_type, 'tmdb_id': self.tmdb_id, 'curr_time': dropped_at, 'total_time': total,
+							'title': self.title, 'season': self.season, 'episode': self.episode}, remote=False)
+		except Exception:
+			pass
+		so._reconnect_attempts = attempts + 1
+		so.playback_percent = round(resume_at / total * 100, 3)
+		so._retry_dropped_source = True
+		self.playback_successful = False
+		so._resume_after_failed_start()
+		self.clear_playback_properties(clear_navigation=False)
+		self._release_active_playback()
+		return True
+
+	def _wait_for_network(self):
+		'''True once the stream server answers again; False if the user cancels, Kodi is
+		closing, or the network stays down for _RECONNECT_NETWORK_WAIT_SEC.'''
+		host, port = self._stream_address()
+		if not host or self._host_reachable(host, port): return True
+		import xbmcgui
+		dialog = xbmcgui.DialogProgress()
+		dialog.create('Red Light', 'Connection lost. Waiting for the network...')
+		started = time.time()
+		try:
+			while True:
+				for _ in range(10):
+					if dialog.iscanceled() or self.kodi_monitor.abortRequested():
+						ku.logger('Red Light', 'Reconnect cancelled')
+						return False
+					ku.sleep(200)
+				if self._host_reachable(host, port):
+					ku.logger('Red Light', 'Network back after %ds: reconnecting' % (time.time() - started))
+					return True
+				waited = time.time() - started
+				if waited >= _RECONNECT_NETWORK_WAIT_SEC:
+					ku.logger('Red Light', 'Network still down after %ds: giving up' % waited)
+					ku.notification('Network still down. Progress saved', 5000)
+					return False
+				dialog.update(int(waited * 100 / _RECONNECT_NETWORK_WAIT_SEC))
+		finally:
+			try: dialog.close()
+			except: pass
+
+	def _stream_address(self):
+		try:
+			from urllib.parse import urlparse
+			parsed = urlparse(str(self.url or '').split('|')[0])
+			if parsed.scheme not in ('http', 'https'): return '', 0
+			return parsed.hostname or '', parsed.port or (443 if parsed.scheme == 'https' else 80)
+		except Exception:
+			return '', 0
+
+	def _host_reachable(self, host, port):
+		import socket
+		try:
+			socket.create_connection((host, port), timeout=3).close()
+			return True
+		except Exception:
+			return False
 
 	def _should_prep_next_ep(self):
 		if not self._owns_active_playback():

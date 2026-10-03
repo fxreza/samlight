@@ -27,6 +27,11 @@ def prepare_directory_listing(mode):
 def routing(sys):
 	params = dict(parse_qsl(sys.argv[2][1:], keep_blank_values=True))
 	mode = params.get('mode', 'navigator.main')
+	# Kodi is asking for a list (a widget or a menu): note when, so the after-playback
+	# check can tell whether the home widgets were built before or after the save.
+	try:
+		if int(sys.argv[1]) >= 0 and not mode.startswith('playback'): kodi_utils.mark_listing_started()
+	except: pass
 	try:
 		from caches.settings_cache import sync_kodi_profile_context
 		sync_kodi_profile_context()
@@ -370,6 +375,9 @@ def routing(sys):
 			params.get('silent', 'false') == 'true',
 			params.get('reload_skin', 'false') == 'true',
 			params.get('defer_browsing', 'false') == 'true')
+	elif mode == 'playback_widget_check':
+		from modules.kodi_utils import playback_widget_check
+		return playback_widget_check()
 	elif mode == 'person_data_dialog':
 		from indexers.people import person_data_dialog
 		return person_data_dialog(params)

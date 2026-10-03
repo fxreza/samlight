@@ -4363,6 +4363,14 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(80)</visible>
+                          <property name="setting_label">Reconnect When the Stream Drops</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.playback.reconnect_on_drop)]</property>
+                          <property name="setting_description">Enabled (default): if the stream ends more than 5 minutes early or freezes for 30 seconds without being paused, usually after a short network drop, Red Light waits up to 90 seconds for the network, then plays the same source again from just before the drop. If that fails it tries your other results. Cancel the wait to stop and keep your progress.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=playback.reconnect_on_drop)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(80)</visible>
                           <visible>[String.IsEqual(Window(10000).Property(redlight.provider.easynews),true) + ![String.IsEmpty(Window(10000).Property(redlight.easynews_user)) + String.IsEmpty(Window(10000).Property(redlight.easynews_password))]] | String.IsEqual(Window(10000).Property(redlight.provider.aiostreams),true)</visible>
                           <property name="setting_label">EasyNews Playback Method</property>
                           <property name="setting_type">action</property>

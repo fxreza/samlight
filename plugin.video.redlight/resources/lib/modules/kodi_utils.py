@@ -810,6 +810,8 @@ SHUTTING_DOWN_PROP = 'redlight.shutting_down'
 PROP_AUTOSCRAPE_TOAST_SHOWN = 'redlight.autoscrape_nextep_toast_shown'
 PLAYBACK_WIDGET_REFRESH_PROP = 'redlight.playback_widget_refresh_at'
 PLAYBACK_WIDGET_REFRESH_COOLDOWN_SEC = 120
+# When Red Light last started building a list for Kodi (a widget or a menu).
+LISTING_STARTED_PROP = 'redlight.listing_started_at'
 # Next Episodes / In Progress: skip blocking provider sync this long after Stop (local DB already written).
 PLAYBACK_LIST_SYNC_SKIP_SEC = 30
 BOOT_SYNC_STARTED_PROP = 'redlight.boot_sync_started_at'
@@ -847,6 +849,8 @@ def cancel_widget_refresh_alarms():
 	try: execute_builtin('CancelAlarm(redlight_widget_refresh,silent)')
 	except: pass
 	try: execute_builtin('CancelAlarm(redlight_widget_skin,silent)')
+	except: pass
+	try: execute_builtin('CancelAlarm(redlight_playback_widget_check,silent)')
 	except: pass
 
 def prepare_service_shutdown():
@@ -891,15 +895,38 @@ def playback_list_sync_skip_recent():
 	except:
 		return False
 
-def schedule_playback_widget_refresh():
-	"""Refresh home widgets after playback without reloading the in-addon Videos list.
+def mark_listing_started():
+	try:
+		from time import time
+		set_property(LISTING_STARTED_PROP, str(time()))
+	except:
+		pass
 
-	UpdateLibrary refreshes the active container too. After Stop from Next Episodes that
-	re-enters build_next_episode; Back during that GetDirectory fails and Kodi dumps to Files.
+def schedule_playback_widget_refresh():
+	"""Called once playback's local watched/progress write is done.
+
+	Kodi reloads the home widgets itself whenever Home opens, and that reload normally
+	starts after this write, so no refresh is needed. A few seconds later
+	playback_widget_check refreshes only if the widgets were built before the write.
 	"""
 	if service_shutting_down(): return
 	mark_playback_widget_refresh()
-	schedule_widget_refresh(silent=True, defer_browsing=True)
+	execute_builtin('AlarmClock(redlight_playback_widget_check,RunPlugin(plugin://plugin.video.redlight/?mode=playback_widget_check),00:00:04,silent)')
+
+def playback_widget_check():
+	"""One refresh, only when needed: Home is showing and its widgets were built before
+	playback saved. Anywhere else, the next return to Home reloads the widgets anyway,
+	so an open Red Light menu is never reloaded under the user."""
+	if service_shutting_down(): return
+	try:
+		if not home(): return
+		saved = float(get_property(PLAYBACK_WIDGET_REFRESH_PROP) or 0)
+		built = float(get_property(LISTING_STARTED_PROP) or 0)
+	except:
+		return
+	if not saved or built >= saved: return
+	logger('Red Light', 'Home widgets were built before playback saved: refreshing once')
+	kodi_refresh()
 
 def refresh_widgets(silent=False, reload_skin=False, defer_browsing=False):
 	if service_shutting_down(): return

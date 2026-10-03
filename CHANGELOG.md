@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.7.0.1] - 2026-10-03
+
+- New setting Playback > Reconnect When the Stream Drops (on by default). If a stream ends more than 5 minutes early or freezes for 30 seconds without being paused, usually after a short network drop, Sam Light waits up to 90 seconds for the network, then plays the same source again from just before the drop. If that fails it tries the other results. Cancelling the wait stops playback and keeps your progress.
+- Stopping a video no longer reloads the home widgets two extra times. Kodi already reloads them when Home opens, so Sam Light refreshes only if they were built before your progress was saved, and never reloads a Sam Light menu you just opened.
+- A stop is noticed within a tenth of a second instead of up to a second, so progress is saved before Kodi rebuilds the widgets.
+
 ## [2.6.1.1] - 2026-10-03
 
 - The clear logo setting is now called Show/Hide Clear Logo. Turned off, it also hides the logo in the player and on Sam Light's own screens (source search and results, next episode, still watching, skip intro, extras).

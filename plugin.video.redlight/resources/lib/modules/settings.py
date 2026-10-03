@@ -177,6 +177,9 @@ def playback_watched_percent():
 def limit_resolve():
 	return get_setting('redlight.playback.limit_resolve', 'false') == 'true'
 
+def reconnect_on_drop():
+	return get_setting('redlight.playback.reconnect_on_drop', 'true') == 'true'
+
 def movies_directory():
 	return translate_path(get_setting('redlight.movies_directory'))
 	

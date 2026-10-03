@@ -1,3 +1,8 @@
+[COLOR red][B]Version 2.7.0[/B][/COLOR]
+- [B]Playback[/B]: new setting Playback > Reconnect When the Stream Drops, on by default. If a stream ends more than 5 minutes early or freezes for 30 seconds without being paused, usually after a short network drop, Red Light waits up to 90 seconds for the network, then plays the same source again from just before the drop. If that fails it tries your other results. Cancel the wait to stop and keep your progress.
+- [B]Widgets[/B]: stopping a video no longer reloads the home widgets two extra times. Kodi already reloads them when Home opens, so Red Light refreshes only if they were built before your progress was saved, and never reloads a Red Light menu you just opened.
+- [B]Playback[/B]: a stop is noticed within a tenth of a second instead of up to a second, so progress is saved before Kodi rebuilds the widgets.
+
 [COLOR red][B]Version 2.6.1[/B][/COLOR]
 - [B]Clear logos[/B]: the setting is now called Show/Hide Clear Logo. Turned off, it also hides the logo in the player and on Red Light's own screens: source search and results, next episode, still watching, skip intro and extras. The text title shows instead.
 - [B]Clear logos[/B]: switching the setting clears the saved Next Episodes, In Progress, Recently Watched and calendar lists and refreshes widgets, so there is no need to clear the Main Cache.
