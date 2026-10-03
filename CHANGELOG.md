@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.6.1.1] - 2026-10-03
+
+- The clear logo setting is now called Show/Hide Clear Logo. Turned off, it also hides the logo in the player and on Sam Light's own screens (source search and results, next episode, still watching, skip intro, extras).
+- Switching the setting clears the saved Next Episodes, In Progress, Recently Watched and calendar lists and refreshes widgets, so no Clear Main Cache is needed.
+
 ## [2.6.0.1] - 2026-10-03
 
 - New setting Settings > Content > Send Clear Logos to Skin (on by default). Turn it off and skins like Arctic Fuse 3 show the text title instead of the clear logo in widgets and lists.

@@ -899,6 +899,13 @@ def set_boolean(params):
 			from modules.settings import refresh_external_scraper_properties
 			refresh_external_scraper_properties()
 		except: pass
+	elif setting == 'send_clearlogo':
+		# Saved episode widget lists carry the logo in their art; drop them so every widget rebuilds now.
+		try:
+			from caches import nextep_cache, progress_episodes_cache, recent_watched_cache, public_calendar_cache, personal_calendar_cache
+			for cache in (nextep_cache, progress_episodes_cache, recent_watched_cache, public_calendar_cache, personal_calendar_cache): cache.invalidate()
+			kodi_utils.refresh_widgets(silent=True)
+		except: pass
 
 def set_string(params):
 	setting_id = params['setting_id']

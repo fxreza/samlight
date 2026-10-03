@@ -7,7 +7,7 @@ from modules.debrid import debrid_cache_check_available
 from modules.settings import debrid_cache_check, external_module_display_name
 from modules.utils import TaskPool
 from modules.source_utils import source_filters
-from modules.settings import provider_sort_ranks, max_threads
+from modules.settings import provider_sort_ranks, max_threads, show_clearlogo
 from modules.native_torrents import NATIVE_INDEXER_SCRAPERS, NATIVE_TORRENT_SCRAPERS
 from modules.kodi_utils import get_icon, kodi_dialog, hide_busy_dialog, show_busy_dialog, close_dialog, addon_fanart, select_dialog, ok_dialog, notification, clear_property
 
@@ -435,7 +435,7 @@ class SourcesResults(BaseDialog):
 		self.setProperty('highlight_tint_focused_background', 'true' if self.tint_focused_background else 'false')
 		self.setProperty('window_format', self.window_format)
 		self.setProperty('fanart', self.meta_get('fanart') or self.addon_fanart)
-		self.setProperty('clearlogo', self.meta_get('clearlogo') or '')
+		self.setProperty('clearlogo', (self.meta_get('clearlogo') or '') if show_clearlogo() else '')
 		self.setProperty('title', self.meta_get('title'))
 		self.setProperty('episode_label', self._episode_results_label())
 		self.setProperty('total_results', self.total_results)
@@ -634,7 +634,7 @@ class SourcesPlayback(BaseDialog):
 		from modules.kodi_utils import sync_scrape_progress_ui
 		sync_scrape_progress_ui(0, 0, 0, 0, 0, 0)
 		title, genre = self.meta_get('title'), self.meta_get('genre', '')
-		fanart, clearlogo = self.meta_get('fanart') or self.addon_fanart, self.meta_get('clearlogo') or ''
+		fanart, clearlogo = self.meta_get('fanart') or self.addon_fanart, (self.meta_get('clearlogo') or '') if show_clearlogo() else ''
 		self.setProperty('window_mode', self.window_mode)
 		self.setProperty('fanart', fanart)
 		self.setProperty('clearlogo', clearlogo)

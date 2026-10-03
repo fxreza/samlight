@@ -16,7 +16,8 @@ class NextepHandoffCover(BaseDialog):
 		fanart = meta_get('fanart') or addon_fanart()
 		poster = meta_get('poster') or empty_poster
 		title = meta_get('title') or ''
-		clearlogo = meta_get('clearlogo') or ''
+		from modules.settings import show_clearlogo
+		clearlogo = (meta_get('clearlogo') or '') if show_clearlogo() else ''
 		try:
 			season, episode = int(meta_get('season') or 0), int(meta_get('episode') or 0)
 		except Exception:

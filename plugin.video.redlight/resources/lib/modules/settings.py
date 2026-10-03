@@ -1621,7 +1621,7 @@ def rpdb_info(media_type):
 def use_season_name():
 	return get_setting('redlight.use_season_name', 'false') == 'true'
 
-def send_clearlogo():
+def show_clearlogo():
 	return get_setting('redlight.send_clearlogo', 'true') == 'true'
 
 

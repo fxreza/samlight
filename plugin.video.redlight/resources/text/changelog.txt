@@ -1,3 +1,7 @@
+[COLOR red][B]Version 2.6.1[/B][/COLOR]
+- [B]Clear logos[/B]: the setting is now called Show/Hide Clear Logo. Turned off, it also hides the logo in the player and on Red Light's own screens: source search and results, next episode, still watching, skip intro and extras. The text title shows instead.
+- [B]Clear logos[/B]: switching the setting clears the saved Next Episodes, In Progress, Recently Watched and calendar lists and refreshes widgets, so there is no need to clear the Main Cache.
+
 [COLOR red][B]Version 2.6.0[/B][/COLOR]
 - [B]Clear logos[/B]: new setting Content > Send Clear Logos to Skin, on by default. Turn it off and Red Light stops passing clear logos to the skin for movies, TV shows, seasons and episodes, so skins like Arctic Fuse 3 show the text title in widgets and lists. Red Light's own windows still show the logo.
 

@@ -564,7 +564,7 @@ class RedLightPlayer(xbmc.Player):
 			self.season, self.episode = self.meta_get('season', ''), self.meta_get('episode', '')
 			poster = self.meta_get('poster') or ku.get_icon('box_office')
 			fanart = self.meta_get('fanart') or ku.get_addon_fanart()
-			clearlogo = self.meta_get('clearlogo') or ''
+			clearlogo = (self.meta_get('clearlogo') or '') if st.show_clearlogo() else ''
 			duration, genre, trailer, mpaa = self.meta_get('duration'), self.meta_get('genre', ''), self.meta_get('trailer'), self.meta_get('mpaa')
 			rating, votes = self.meta_get('rating'), self.meta_get('votes')
 			premiered, studio, tagline = self.meta_get('premiered'), self.meta_get('studio', ''), self.meta_get('tagline')

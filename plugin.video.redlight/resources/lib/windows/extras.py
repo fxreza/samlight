@@ -904,7 +904,7 @@ class Extras(BaseDialog):
 		self.rpdb_api_key, self.rpdb_format = rpdb_info['rpdb_api_key'], rpdb_info['rpdb_format']
 		self.poster = self.meta_get('poster') or self.empty_poster
 		self.fanart = self.meta_get('fanart') or self.addon_fanart
-		self.clearlogo = self.meta_get('clearlogo') or ''
+		self.clearlogo = (self.meta_get('clearlogo') or '') if settings.show_clearlogo() else ''
 		self.landscape = self.meta_get('landscape') or self.meta_get('fanart') or ''
 		self.rating = str(round(self.meta_get('rating'), 1)) if self.meta_get('rating') not in ('', '%', 0, 0.0, None) else None
 		self.mpaa, self.genre, self.network = self.meta_get('mpaa'), self.meta_get('genre'), self.meta_get('studio') or ''

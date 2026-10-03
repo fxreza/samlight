@@ -22,6 +22,7 @@ def _settings_fingerprint(watched_indicators, is_external, short_list=True):
 		1 if (is_external and settings.single_ep_widget_omit_tvshowtitle()) else 0,
 		1 if (is_external and settings.single_ep_widget_omit_season_episode()) else 0,
 		1 if settings.avoid_episode_spoilers() else 0,
+		1 if settings.show_clearlogo() else 0,
 		settings.date_offset(),
 		settings.playback_key(),
 		2,  # cache schema: episode still on landscape

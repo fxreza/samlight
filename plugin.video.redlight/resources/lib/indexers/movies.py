@@ -219,7 +219,7 @@ class Movies:
 				except: poster = meta_get('poster') or self.poster_empty
 			else: poster = meta_get('poster') or self.poster_empty
 			fanart = meta_get('fanart') or self.fanart_empty
-			clearlogo, landscape = (meta_get('clearlogo') or '') if self.send_clearlogo else '', meta_get('landscape') or meta_get('fanart') or ''
+			clearlogo, landscape = (meta_get('clearlogo') or '') if self.use_clearlogo else '', meta_get('landscape') or meta_get('fanart') or ''
 			thumb = poster or landscape or fanart
 			movieset_id, movieset_name = meta_get('extra_info').get('collection_id', None), meta_get('extra_info').get('collection_name', None)
 			first_airdate = jsondate_to_datetime(premiered, '%Y-%m-%d', True)
@@ -367,7 +367,7 @@ class Movies:
 		self.custom_cm_menu = self.cm_sort_order != settings.cm_default_order()
 		self.mpaa_region = settings.mpaa_region()
 		self.ai_model_active = settings.ai_model_active()
-		self.send_clearlogo = settings.send_clearlogo()
+		self.use_clearlogo = settings.show_clearlogo()
 		# One read per listing so the context menu can say what it will actually do.
 		from caches.favorites_cache import favorites_cache
 		self.favorite_ids = set(i['tmdb_id'] for i in favorites_cache.get_favorites('movie'))

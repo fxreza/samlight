@@ -3,7 +3,7 @@ import time
 from threading import Thread
 from modules.kodi_utils import addon_fanart, execute_builtin, get_visibility, kodi_player
 from windows.base_window import BaseDialog
-from modules.settings import avoid_episode_spoilers
+from modules.settings import avoid_episode_spoilers, show_clearlogo
 # from modules.kodi_utils import logger
 
 def _restore_fullscreen_playback(player=None):
@@ -83,7 +83,7 @@ class NextEpisode(BaseDialog):
 	def set_properties(self):
 		self.setProperty('mode', 'next_episode')
 		self.setProperty('thumb', self.get_thumb())
-		self.setProperty('clearlogo', self.meta.get('clearlogo', ''))
+		self.setProperty('clearlogo', self.meta.get('clearlogo', '') if show_clearlogo() else '')
 		self.setProperty('episode_label', '%s[B] | [/B]%02dx%02d[B] | [/B]%s' % (self.meta['title'], self.meta['season'], self.meta['episode'], self.meta['ep_name']))
 		self.setProperty('pause_timer', '')
 		self.setProperty('nextep_remaining', '')
@@ -182,7 +182,7 @@ class StillWatching(BaseDialog):
 		self.close()
 
 	def set_properties(self):
-		landscape, fanart, clearlogo = self.meta.get('landscape', ''), self.meta.get('fanart', ''), self.meta.get('clearlogo', '')
+		landscape, fanart, clearlogo = self.meta.get('landscape', ''), self.meta.get('fanart', ''), self.meta.get('clearlogo', '') if show_clearlogo() else ''
 		self.setProperty('mode', 'autoscrape_confirm' if self.compact_confirm else 'still_watching')
 		if self.compact_confirm:
 			if avoid_episode_spoilers() and int(self.meta.get('playcount') or 0) == 0:
@@ -288,7 +288,7 @@ class IntroSkipPrompt(BaseDialog):
 		self.close()
 
 	def set_properties(self):
-		fanart, clearlogo = self.meta.get('fanart', ''), self.meta.get('clearlogo', '')
+		fanart, clearlogo = self.meta.get('fanart', ''), self.meta.get('clearlogo', '') if show_clearlogo() else ''
 		self.setProperty('mode', 'skip_intro')
 		if avoid_episode_spoilers() and int(self.meta.get('playcount') or 0) == 0:
 			thumb = fanart or addon_fanart()
@@ -353,7 +353,7 @@ class StingersNotification(BaseDialog):
 	def set_properties(self):
 		self.setProperty('mode', 'stinger')
 		self.setProperty('thumb', self.meta.get('fanart', '')) or addon_fanart()
-		self.setProperty('clearlogo', self.meta.get('clearlogo', ''))
+		self.setProperty('clearlogo', self.meta.get('clearlogo', '') if show_clearlogo() else '')
 
 	def monitor(self):
 		total_time = 10000
