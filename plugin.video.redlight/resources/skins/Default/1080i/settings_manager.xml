@@ -1052,6 +1052,14 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(30)</visible>
+                          <property name="setting_label">Send Clear Logos to Skin</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.send_clearlogo)]</property>
+                          <property name="setting_description">When enabled (default), movies and TV shows carry their clear logo, and skins can show it instead of the title. Turn it off to make skins like Arctic Fuse 3 show the text title in widgets and lists. Red Light's own windows still use the logo.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=send_clearlogo)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(30)</visible>
                           <property name="setting_label">Flatten TV Show Seasons</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.default_all_episodes_name)]</property>

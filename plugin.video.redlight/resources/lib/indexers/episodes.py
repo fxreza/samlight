@@ -212,6 +212,7 @@ def build_episode_list(params):
 	custom_cm_menu = cm_sort_order != settings.cm_default_order()
 	rpdb_info = settings.rpdb_info('tvshow')
 	rpdb_api_key, rpdb_format = rpdb_info['rpdb_api_key'], rpdb_info['rpdb_format']
+	send_clearlogo = settings.send_clearlogo()
 	playback_key = settings.playback_key()
 	play_mode = 'playback.%s' % playback_key
 	meta = tvshow_meta('tmdb_id', params.get('tmdb_id'), settings.tmdb_api_key(), settings.mpaa_region(), current_date)
@@ -226,7 +227,7 @@ def build_episode_list(params):
 		except: show_poster = meta_get('poster') or poster_empty
 	else: show_poster = meta_get('poster') or poster_empty
 	show_fanart = meta_get('fanart') or fanart_empty
-	show_clearlogo = meta_get('clearlogo') or ''
+	show_clearlogo = (meta_get('clearlogo') or '') if send_clearlogo else ''
 	show_landscape = meta_get('landscape') or meta_get('fanart') or ''
 	watched_db = ws.get_database(watched_indicators)
 	watched_info = ws.watched_info_episode(tmdb_id, watched_db)
@@ -331,7 +332,7 @@ def build_single_episode(list_type, params={}):
 				except: show_poster = meta_get('poster') or poster_empty
 			else: show_poster = meta_get('poster') or poster_empty
 			show_fanart = meta_get('fanart') or fanart_empty
-			show_clearlogo = meta_get('clearlogo') or ''
+			show_clearlogo = (meta_get('clearlogo') or '') if send_clearlogo else ''
 			show_landscape = meta_get('landscape') or meta_get('fanart') or ''
 			try: year = premiered.split('-')[0]
 			except: year = show_year or '2050'
@@ -587,6 +588,7 @@ def build_single_episode(list_type, params={}):
 	custom_cm_menu = cm_sort_order != settings.cm_default_order()
 	rpdb_info = settings.rpdb_info('tvshow')
 	rpdb_api_key, rpdb_format = rpdb_info['rpdb_api_key'], rpdb_info['rpdb_format']
+	send_clearlogo = settings.send_clearlogo()
 	playback_key = settings.playback_key()
 	play_mode = 'playback.%s' % playback_key
 	watched_db = ws.get_database(watched_indicators)

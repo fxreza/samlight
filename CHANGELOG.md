@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.6.0.1] - 2026-10-03
+
+- New setting Settings > Content > Send Clear Logos to Skin (on by default). Turn it off and skins like Arctic Fuse 3 show the text title instead of the clear logo in widgets and lists.
+
 ## [2.5.1.1] - 2026-10-03
 
 - Fixed Kodi freezing on the loading screen when a stream stalls right after it opens. It now tries the next source instead.

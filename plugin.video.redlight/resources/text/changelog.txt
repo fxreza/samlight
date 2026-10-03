@@ -1,3 +1,6 @@
+[COLOR red][B]Version 2.6.0[/B][/COLOR]
+- [B]Clear logos[/B]: new setting Content > Send Clear Logos to Skin, on by default. Turn it off and Red Light stops passing clear logos to the skin for movies, TV shows, seasons and episodes, so skins like Arctic Fuse 3 show the text title in widgets and lists. Red Light's own windows still show the logo.
+
 [COLOR red][B]Version 2.5.1[/B][/COLOR]
 - [B]Playback[/B]: a stream that dies right after it opens (a stalled server) no longer leaves the loading screen stuck on top of Kodi, where every button did nothing and Kodi had to be force closed. Red Light now treats it as a failed start and tries the next source; when none are left the loading screen closes.
 - [B]Loading screen[/B]: Back always closes it now. If nothing closes it within 3 seconds after Back, it closes itself.

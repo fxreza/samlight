@@ -238,7 +238,7 @@ class TVShows:
 				except: poster = meta_get('poster') or self.poster_empty
 			else: poster = meta_get('poster') or self.poster_empty
 			fanart = meta_get('fanart') or self.fanart_empty
-			clearlogo, landscape = meta_get('clearlogo') or '', meta_get('landscape') or meta_get('fanart') or ''
+			clearlogo, landscape = (meta_get('clearlogo') or '') if self.send_clearlogo else '', meta_get('landscape') or meta_get('fanart') or ''
 			thumb = poster or landscape or fanart
 			tmdb_id, total_seasons, total_aired_eps = meta_get('tmdb_id'), meta_get('total_seasons'), meta_get('total_aired_eps')
 			progress_aired_eps = watched_status.progress_aired_eps(meta)
@@ -385,6 +385,7 @@ class TVShows:
 		self.favorite_ids = set(i['tmdb_id'] for i in favorites_cache.get_favorites('tvshow'))
 		rpdb_info = settings.rpdb_info('tvshow')
 		self.rpdb_api_key, self.rpdb_format = rpdb_info['rpdb_api_key'], rpdb_info['rpdb_format']
+		self.send_clearlogo = settings.send_clearlogo()
 		self.all_episodes, self.open_extras = settings.default_all_episodes(), settings.media_open_action('tvshow') == 1
 		self.cm_sort_order = settings.cm_sort_order()
 		self.custom_cm_menu = self.cm_sort_order != settings.cm_default_order()
