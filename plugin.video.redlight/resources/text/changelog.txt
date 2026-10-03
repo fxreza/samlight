@@ -1,3 +1,8 @@
+[COLOR red][B]Version 2.7.1[/B][/COLOR]
+- [B]Playback[/B]: reconnect after a stream drop checks whether the internet works, not the stream server. A dead debrid server now moves straight on instead of waiting and giving up.
+- [B]Playback[/B]: the wait for the internet is 20 seconds instead of 90.
+- [B]Playback[/B]: if the same source fails again, it goes on down the results in list order, whichever service they are on. If the video was started by a quick cloud match, the full search runs first, then it carries on with the results not tried yet. It always resumes from just before the drop, without asking.
+
 [COLOR red][B]Version 2.7.0[/B][/COLOR]
 - [B]Playback[/B]: new setting Playback > Reconnect When the Stream Drops, on by default. If a stream ends more than 5 minutes early or freezes for 30 seconds without being paused, usually after a short network drop, Red Light waits up to 90 seconds for the network, then plays the same source again from just before the drop. If that fails it tries your other results. Cancel the wait to stop and keep your progress.
 - [B]Widgets[/B]: stopping a video no longer reloads the home widgets two extra times. Kodi already reloads them when Home opens, so Red Light refreshes only if they were built before your progress was saved, and never reloads a Red Light menu you just opened.

@@ -1356,6 +1356,14 @@ class Sources():
 	def play_source(self, results):
 		if self._user_cancelled_scrape():
 			return self._finish_scrape_cancel()
+		if getattr(self, '_drop_play_rest', False):
+			# Full search after a stream drop: go on down the results, in list order.
+			self._drop_play_rest = False
+			rest = [i for i in results if self._source_key(i) not in self._tried_sources()]
+			kodi_utils.logger('Red Light', 'After stream drop: %s untried result(s) left' % len(rest))
+			if rest: return self.play_file(rest)
+			self._kill_progress_dialog(join_timeout=1.0)
+			return kodi_utils.notification('No other sources to play. Progress saved', 5000)
 		self._clear_stale_resolve_busy()
 		if kodi_utils.get_property(PROP_RESOLVE_BUSY) == 'true':
 			try:
@@ -1513,21 +1521,7 @@ class Sources():
 				self.play_file(results, chosen_item)
 				return
 			elif self.prescrape and action == 'perform_full_search':
-				self._kill_progress_dialog(join_timeout=1.0)
-				if not self.progress_dialog and not self.background:
-					self._make_progress_dialog()
-				# Mirror empty-prescrape → full scrape: keep remove_scrapers and prescrape_sources
-				# so cloud scrapers stay finished and progress shows external/cache only.
-				self.prescrape = False
-				self.clear_properties = True
-				self.filters_ignored = self.ignore_scrape_filters
-				self.sources, self.orig_results = [], []
-				self.threads, self.providers, self.prescrape_scrapers, self.prescrape_threads = [], [], [], []
-				self.uncached_results, self.cloud_scraper_names = [], []
-				self.active_folders, self.folder_info = False, []
-				self.internal_scraper_names, self.resolve_dialog_made = [], False
-				if not self.ignore_scrape_filters: kodi_utils.clear_property('fs_filterless_search')
-				self._prepare_external_only_followup()
+				self._prepare_full_search_followup()
 				return self.get_sources()
 			elif action == 'cache_change_rescrape':
 				self.cache_check_override = chosen_item == 'true'
@@ -1536,6 +1530,48 @@ class Sources():
 
 	def _get_active_scraper_names(self, scraper_list):
 		return [i[2] for i in scraper_list]
+
+	def _prepare_full_search_followup(self):
+		self._kill_progress_dialog(join_timeout=1.0)
+		if not self.progress_dialog and not self.background:
+			self._make_progress_dialog()
+		# Mirror empty-prescrape → full scrape: keep remove_scrapers and prescrape_sources
+		# so cloud scrapers stay finished and progress shows external/cache only.
+		self.prescrape = False
+		self.clear_properties = True
+		self.filters_ignored = self.ignore_scrape_filters
+		self.sources, self.orig_results = [], []
+		self.threads, self.providers, self.prescrape_scrapers, self.prescrape_threads = [], [], [], []
+		self.uncached_results, self.cloud_scraper_names = [], []
+		self.active_folders, self.folder_info = False, []
+		self.internal_scraper_names, self.resolve_dialog_made = [], False
+		if not self.ignore_scrape_filters: kodi_utils.clear_property('fs_filterless_search')
+		self._prepare_external_only_followup()
+
+	def _source_key(self, item):
+		# Same file on two services is two sources: TorBox failing must still try Premiumize.
+		return (item.get('scrape_provider'), item.get('debrid'), item.get('hash') or item.get('url') or item.get('name'))
+
+	def _tried_sources(self):
+		if getattr(self, '_tried_source_keys', None) is None: self._tried_source_keys = set()
+		return self._tried_source_keys
+
+	def _mark_source_tried(self, item):
+		try: self._tried_sources().add(self._source_key(item))
+		except Exception: pass
+
+	def _continue_after_drop(self):
+		"""A stream dropped mid-playback and every queued source failed. When only the
+		quick cloud check had run (a cloud match plays at once), run the full search now
+		and carry on down the results in list order, resuming at the drop."""
+		if not getattr(self, '_reconnect_attempts', 0) or not self.cloud_prescrape_autoplay: return False
+		if getattr(self, '_drop_search_done', False) or self.background: return False
+		self._drop_search_done = self._drop_play_rest = True
+		self.cloud_prescrape_autoplay = False
+		kodi_utils.logger('Red Light', 'After stream drop: cloud results used up, running the full search')
+		self._prepare_full_search_followup()
+		self.get_sources()
+		return True
 
 	def _prepare_external_only_followup(self):
 		"""External torrent follow-up: skip re-scraping internals, use current filter/sort/priority settings."""
@@ -2679,7 +2715,10 @@ class Sources():
 				self._stop_active_playback(light=True)
 			if not self.progress_dialog and not self.background:
 				self._make_progress_dialog()
-			if self._nextep_aio_en_fresh_start(source):
+			if getattr(self, '_drop_resume_percent', None):
+				# Carrying on after a stream drop: resume where it dropped, no resume prompt.
+				self.playback_percent = self._drop_resume_percent
+			elif self._nextep_aio_en_fresh_start(source):
 				self.playback_percent = 0.0
 			else:
 				self.playback_percent = self.get_playback_percent()
@@ -2723,6 +2762,7 @@ class Sources():
 					url, self.playback_successful = None, None
 					self.playing_filename = item['name']
 					self.playing_item = item
+					self._mark_source_tried(item)
 					player = RedLightPlayer()
 					try:
 						if self._user_cancelled_resolve() or monitor.abortRequested():
@@ -2844,6 +2884,8 @@ class Sources():
 	def playback_failed_action(self):
 		if self._user_cancelled_resolve():
 			return self._finish_resolve_cancel()
+		if self._continue_after_drop():
+			return
 		if self.cloud_prescrape_autoplay:
 			self._kill_progress_dialog(join_timeout=1.0)
 			self.resolve_dialog_made = False

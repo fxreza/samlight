@@ -42,7 +42,7 @@ _INTRO_SKIP_SEEK_SETTLE_MS = 250
 _DROP_MIN_REMAINING_SEC = 300
 _STALL_SEC = 30
 _RECONNECT_MAX = 5
-_RECONNECT_NETWORK_WAIT_SEC = 90
+_RECONNECT_NETWORK_WAIT_SEC = 20
 
 class RedLightPlayer(xbmc.Player):
 	def __init__ (self):
@@ -1047,7 +1047,7 @@ class RedLightPlayer(xbmc.Player):
 		except Exception:
 			pass
 		so._reconnect_attempts = attempts + 1
-		so.playback_percent = round(resume_at / total * 100, 3)
+		so.playback_percent = so._drop_resume_percent = round(resume_at / total * 100, 3)
 		so._retry_dropped_source = True
 		self.playback_successful = False
 		so._resume_after_failed_start()
@@ -1056,22 +1056,22 @@ class RedLightPlayer(xbmc.Player):
 		return True
 
 	def _wait_for_network(self):
-		'''True once the stream server answers again; False if the user cancels, Kodi is
-		closing, or the network stays down for _RECONNECT_NETWORK_WAIT_SEC.'''
-		host, port = self._stream_address()
-		if not host or self._host_reachable(host, port): return True
+		'''True once the internet answers again; False if the user cancels, Kodi is closing,
+		or it stays down for _RECONNECT_NETWORK_WAIT_SEC. Tests the internet, not the stream
+		server: a dead debrid server must move on to the next source, not wait.'''
+		if self._internet_up(): return True
 		import xbmcgui
 		dialog = xbmcgui.DialogProgress()
 		dialog.create('Red Light', 'Connection lost. Waiting for the network...')
 		started = time.time()
 		try:
 			while True:
-				for _ in range(10):
+				for _ in range(5):
 					if dialog.iscanceled() or self.kodi_monitor.abortRequested():
 						ku.logger('Red Light', 'Reconnect cancelled')
 						return False
 					ku.sleep(200)
-				if self._host_reachable(host, port):
+				if self._internet_up():
 					ku.logger('Red Light', 'Network back after %ds: reconnecting' % (time.time() - started))
 					return True
 				waited = time.time() - started
@@ -1084,22 +1084,16 @@ class RedLightPlayer(xbmc.Player):
 			try: dialog.close()
 			except: pass
 
-	def _stream_address(self):
-		try:
-			from urllib.parse import urlparse
-			parsed = urlparse(str(self.url or '').split('|')[0])
-			if parsed.scheme not in ('http', 'https'): return '', 0
-			return parsed.hostname or '', parsed.port or (443 if parsed.scheme == 'https' else 80)
-		except Exception:
-			return '', 0
-
-	def _host_reachable(self, host, port):
+	def _internet_up(self):
+		# A name lookup plus a connection: the 12:30 drop failed at the lookup.
 		import socket
-		try:
-			socket.create_connection((host, port), timeout=3).close()
-			return True
-		except Exception:
-			return False
+		for host in ('www.google.com', 'www.cloudflare.com'):
+			try:
+				socket.create_connection((host, 443), timeout=3).close()
+				return True
+			except Exception:
+				pass
+		return False
 
 	def _should_prep_next_ep(self):
 		if not self._owns_active_playback():

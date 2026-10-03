@@ -4366,7 +4366,7 @@
                           <property name="setting_label">Reconnect When the Stream Drops</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.playback.reconnect_on_drop)]</property>
-                          <property name="setting_description">Enabled (default): if the stream ends more than 5 minutes early or freezes for 30 seconds without being paused, usually after a short network drop, Red Light waits up to 90 seconds for the network, then plays the same source again from just before the drop. If that fails it tries your other results. Cancel the wait to stop and keep your progress.</property>
+                          <property name="setting_description">Enabled (default): if the stream ends more than 5 minutes early or freezes for 30 seconds without being paused, usually after a short network drop or a debrid server failing, Red Light waits up to 20 seconds if the internet is down, then plays the same source again from just before the drop. If that fails it goes on down your results in list order, whichever service they are on, and runs the full search first if only the quick cloud check had run. Cancel the wait to stop and keep your progress.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=playback.reconnect_on_drop)</onclick>
                       </item>
                       <item>

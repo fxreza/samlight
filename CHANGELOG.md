@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.7.1.1] - 2026-10-03
+
+- Reconnect after a stream drop checks whether the internet works, not the stream server. A dead debrid server now moves straight on instead of waiting and giving up.
+- The wait for the internet is 20 seconds instead of 90.
+- If the same source fails again, it goes on down the results in list order, whichever service they are on (TorBox, Premiumize, ...). If the video was started by a quick cloud match, the full search runs first, then it carries on with the results not tried yet. It always resumes from just before the drop, without asking.
+
 ## [2.7.0.1] - 2026-10-03
 
 - New setting Playback > Reconnect When the Stream Drops (on by default). If a stream ends more than 5 minutes early or freezes for 30 seconds without being paused, usually after a short network drop, Sam Light waits up to 90 seconds for the network, then plays the same source again from just before the drop. If that fails it tries the other results. Cancelling the wait stops playback and keeps your progress.
