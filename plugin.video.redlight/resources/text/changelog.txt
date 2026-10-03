@@ -1,3 +1,9 @@
+[COLOR red][B]Version 2.5.1[/B][/COLOR]
+- [B]Playback[/B]: a stream that dies right after it opens (a stalled server) no longer leaves the loading screen stuck on top of Kodi, where every button did nothing and Kodi had to be force closed. Red Light now treats it as a failed start and tries the next source; when none are left the loading screen closes.
+- [B]Loading screen[/B]: Back always closes it now. If nothing closes it within 3 seconds after Back, it closes itself.
+- [B]Loading screen[/B]: when a source is found, the screen switches from searching to resolving in place instead of closing and reopening. No more black screen in between.
+- [B]Slow servers[/B]: a stream server that failed or stalled at the start is remembered for 6 hours. Links on it go to the back of the autoplay queue, so other sources are tried first.
+
 [COLOR red][B]Version 2.5.0[/B][/COLOR]
 - [B]Cloud check[/B]: with Check Before Full Search on for TB Cloud / PM Cloud, the cloud check now runs at the same time as the external search instead of before it. A cloud match stops the external search and plays right away. No match, no extra wait.
 - [B]Cloud check order[/B]: TorBox comes first and Premiumize is the fallback. Premiumize only wins when TorBox finished with nothing; when both have it, TorBox plays.

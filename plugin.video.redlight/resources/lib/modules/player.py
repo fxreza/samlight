@@ -8,7 +8,7 @@ import time
 from threading import Thread
 from apis.trakt_api import make_trakt_slug
 from caches.settings_cache import get_setting
-from modules import kodi_utils as ku, settings as st, watched_status as ws
+from modules import kodi_utils as ku, settings as st, slow_hosts, watched_status as ws
 # logger = ku.logger
 
 PROP_RESOLVE_CANCEL = 'redlight.resolve_cancelled'
@@ -72,6 +72,7 @@ class RedLightPlayer(xbmc.Player):
 			pass
 
 	def onPlayBackStopped(self):
+		self._user_stopped = True
 		self._maybe_show_nextep_handoff_cover()
 
 	def onPlayBackEnded(self):
@@ -151,6 +152,7 @@ class RedLightPlayer(xbmc.Player):
 						pass
 				else:
 					# Keep the resolver progress UI so play_file can try the next queued source.
+					if not getattr(self, '_source_skipped', False): slow_hosts.mark_slow(self.url)
 					self.run_error()
 					self._dismiss_kodi_playback_error_dialog()
 				self.safe_stop()
@@ -290,7 +292,7 @@ class RedLightPlayer(xbmc.Player):
 						if self.getTotalTime() not in ('0.0', '', 0.0, None) and ku.get_visibility('Window.IsActive(fullscreenvideo)'):
 							self.playback_successful = True
 					except: pass
-			elif self.sources_object.progress_dialog.skip_resolved(): self.playback_successful = False
+			elif self.sources_object.progress_dialog.skip_resolved(): self.playback_successful, self._source_skipped = False, True
 			elif self.sources_object.progress_dialog.iscanceled() or self.kodi_monitor.abortRequested():
 				self.sources_object.cancel_all_playback = True
 				self.sources_object._resolve_user_cancelled = True
@@ -335,6 +337,7 @@ class RedLightPlayer(xbmc.Player):
 
 	def monitor(self):
 		playback_superseded = False
+		self._user_stopped = False
 		try:
 			ensure_dialog_dead, total_check_time = False, 0
 			if self.media_type == 'episode':
@@ -381,7 +384,13 @@ class RedLightPlayer(xbmc.Player):
 					enable_local_subtitles(self, poster=poster, is_episode=self.media_type == 'episode')
 				except:
 					self.showSubtitles(True)
+			# Kodi can report not-playing for a moment while it caches; give it a few seconds.
+			for _ in range(30):
+				if self.isPlayingVideo() or self.kodi_monitor.abortRequested(): break
+				ku.sleep(100)
+			loop_ran = False
 			while self.isPlayingVideo():
+				loop_ran = True
 				if not self._owns_active_playback():
 					playback_superseded = True
 					break
@@ -440,6 +449,17 @@ class RedLightPlayer(xbmc.Player):
 						if self.current_point >= final_chapter: self.run_movie_stingers()
 				except: pass
 				if not self.subs_searched: self.run_subtitles()
+			if not loop_ran and not playback_superseded and not self._user_stopped:
+				# The stream died right after it opened (the server stalled, Kodi hit end of
+				# file at once). Treat it as a failed start: the loading screen stays up and
+				# play_file tries the next source, or closes it when none are left.
+				ku.logger('Red Light', 'Playback stopped right after it started: trying the next source')
+				slow_hosts.mark_slow(self.url)
+				self.playback_successful = False
+				self.sources_object._resume_after_failed_start()
+				self.clear_playback_properties(clear_navigation=False)
+				self._release_active_playback()
+				return
 			try:
 				_remaining = None
 				if getattr(self, 'total_time', None) not in (None, '', 0, 0.0) and getattr(self, 'curr_time', None) not in (None, ''):

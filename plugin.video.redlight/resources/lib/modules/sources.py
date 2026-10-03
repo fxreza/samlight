@@ -10,7 +10,7 @@ from windows.base_window import open_window, create_window
 from caches.episode_groups_cache import episode_groups_cache
 from caches.settings_cache import get_setting
 from scrapers import external, folders
-from modules import debrid, kodi_utils, settings, metadata, watched_status
+from modules import debrid, kodi_utils, settings, metadata, slow_hosts, watched_status
 from modules.player import RedLightPlayer
 from modules.source_utils import get_cache_expiry, make_alias_dict, include_exclude_filters, get_file_info, release_info_format, audio_lang_choices, matches_english_or_untagged
 from modules.release_groups import release_group_boost
@@ -727,10 +727,11 @@ class Sources():
 				return self._finish_scrape_cancel()
 			if not results:
 				if self.check_prescrape_ran and self._can_continue_full_scrape():
-					self._kill_progress_dialog(join_timeout=1.0)
-					self._reset_scrape_progress_counts()
-					if not self.progress_dialog and not self.background:
-						self._make_progress_dialog()
+					if not self._reuse_progress_dialog(scraper=True):
+						self._kill_progress_dialog(join_timeout=1.0)
+						self._reset_scrape_progress_counts()
+						if not self.progress_dialog and not self.background:
+							self._make_progress_dialog()
 					self._refresh_results_settings()
 				if not settings.auto_play(self.media_type) and not self.cloud_prescrape_autoplay and not self._random_playback() and not self._explicit_autoplay_request():
 					self.autoplay = False
@@ -1344,10 +1345,12 @@ class Sources():
 				self.remove_scrapers.remove(scraper)
 
 	def _prepare_cloud_autoplay_resolve(self):
-		"""Leave prescrape progress UI and open a clean resolver dialog for cloud autoplay."""
-		self._kill_progress_dialog(join_timeout=1.0)
-		if not self.background:
-			self._make_progress_dialog()
+		"""Leave prescrape progress UI for the resolver. Keeps the open window when it can:
+		closing and reopening it shows a black screen until the fanart loads again."""
+		if not self._reuse_progress_dialog():
+			self._kill_progress_dialog(join_timeout=1.0)
+			if not self.background:
+				self._make_progress_dialog()
 		self.resolve_dialog_made = False
 
 	def play_source(self, results):
@@ -2129,6 +2132,14 @@ class Sources():
 		kodi_utils.set_property(PROP_RESOLVE_BUSY, 'true')
 		kodi_utils.set_property(PROP_RESOLVE_OWNER, self._resolve_busy_owner)
 
+	def _resume_after_failed_start(self):
+		"""Playback died right after it was marked started: take back the busy flags that
+		success released, so the resolve queue can try the next source."""
+		self.playback_successful = False
+		if kodi_utils.get_property(PROP_RESOLVE_BUSY) != 'true':
+			self._claim_resolve_busy()
+		self._reclaim_sources_busy()
+
 	def _on_scrape_dialog_cancel(self):
 		# Release busy immediately so a quick second widget is not toast-blocked. Overlay
 		# force-close is owner-guarded so a newer scrape's windows are not torn down.
@@ -2176,6 +2187,23 @@ class Sources():
 
 	def _reset_scrape_progress_counts(self):
 		self.sources_total = self.sources_4k = self.sources_1080p = self.sources_720p = self.sources_sd = 0
+
+	def _reuse_progress_dialog(self, scraper=False):
+		"""Reset the open loading screen in place instead of closing and reopening it.
+		Returns False when there is no live window to reuse."""
+		dialog, thread = self.progress_dialog, self.progress_thread
+		if self.background or not dialog or not thread or not thread.is_alive():
+			return False
+		try:
+			dialog.reset_is_cancelled()
+			dialog.skip_resolve = False
+			if scraper:
+				self._reset_scrape_progress_counts()
+				dialog.update_scraper(0, 0, 0, 0, 0, '', 0)
+				dialog.enable_scraper()
+			return True
+		except:
+			return False
 
 	def _make_progress_dialog(self):
 		self._ensure_progress_dialog_dead()
@@ -2713,6 +2741,13 @@ class Sources():
 								self._resolve_user_cancelled = True
 								self.cancel_all_playback = True
 								break
+							# A server that stalled recently goes to the back of the queue, once.
+							if count < len(items) and not item.get('slow_host_deferred') and slow_hosts.is_slow(url):
+								kodi_utils.logger('Red Light', 'Slow stream server %s: trying other sources first' % slow_hosts.stream_host(url))
+								deferred = dict(item)
+								deferred['slow_host_deferred'] = True
+								items.append(deferred)
+								continue
 							resolve_percent = 0
 							self.progress_dialog.busy_spinner('false')
 							self.progress_dialog.update_resolver(percent=resolve_percent)
@@ -2760,6 +2795,11 @@ class Sources():
 				kodi_utils.logger('Red Light', 'Resolve queue failed: success=%s url=%s dialog=%s' % (
 					self.playback_successful, bool(url), bool(self.progress_dialog)))
 				self.playback_failed_action()
+			elif self.progress_dialog:
+				# Playback is over but the loading screen is still up (nothing closed it):
+				# close it so it cannot sit on top of Kodi and swallow every key press.
+				kodi_utils.logger('Red Light', 'Closing leftover loading screen after playback')
+				self._kill_progress_dialog(join_timeout=1.0, close_overlays=False)
 		finally:
 			if self.params.get('nextep_stash_play') == 'true':
 				_set_nextep_stash_play_in_flight(False)

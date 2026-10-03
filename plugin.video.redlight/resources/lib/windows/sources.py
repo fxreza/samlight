@@ -546,6 +546,7 @@ class SourcesPlayback(BaseDialog):
 
 	def run(self):
 		self.doModal()
+		self.modal_done = True
 		from modules.kodi_utils import clear_scrape_progress_ui
 		clear_scrape_progress_ui()
 		self.clearProperties()
@@ -575,7 +576,21 @@ class SourcesPlayback(BaseDialog):
 				pass
 			if not defer_close:
 				self.close()
+			elif not getattr(self, '_stuck_watch', False):
+				self._stuck_watch = True
+				Thread(target=self._close_if_stuck, daemon=True).start()
 		elif action == self.right_action and self.window_mode == 'resolver': self.skip_resolve = True
+
+	def _close_if_stuck(self):
+		# Back only flags the cancel here; the resolve or player loop is meant to close the
+		# window. If that loop already ended, nothing will, so close it after a short wait.
+		for _ in range(30):
+			if getattr(self, 'modal_done', False): return
+			self.sleep(100)
+		if not getattr(self, 'modal_done', False):
+			from modules.kodi_utils import logger
+			logger('Red Light', 'Loading screen still open 3s after Back: closing it')
+			self.close()
 
 	def iscanceled(self):
 		return self.is_canceled
