@@ -15,7 +15,6 @@ class source:
 		self._folder_queue = []
 		self._folders_scanned = 0
 		self._max_folder_scans = 24
-		self._listall_reserve_seconds = 8
 
 	def results(self, info):
 		try:
@@ -119,14 +118,13 @@ class source:
 		return True
 
 	def _scrape_cloud(self):
+		# One request lists the whole cloud; the folder walk (up to 24 requests) is only a fallback.
+		if self._scrape_cloud_listall(): return
 		self._folder_queue = [(None, '', 0)]
 		self._folders_scanned = 0
-		walk_deadline = self.scrape_deadline - self._listall_reserve_seconds
-		while self._folder_queue and time.time() < walk_deadline and self._folders_scanned < self._max_folder_scans:
+		while self._folder_queue and time.time() < self.scrape_deadline and self._folders_scanned < self._max_folder_scans:
 			folder_id, path_prefix, depth = self._folder_queue.pop(0)
 			self._scan_folder(folder_id, path_prefix, depth)
-		if not self.scrape_results and time.time() < self.scrape_deadline:
-			self._scrape_cloud_listall()
 
 	def _scan_folder(self, folder_id, path_prefix, depth):
 		self._folders_scanned += 1
@@ -151,25 +149,21 @@ class source:
 			append_result(file_item)
 
 	def _scrape_cloud_listall(self):
-		"""Fallback when folder walk finds nothing (flat API)."""
-		if time.time() > self.scrape_deadline - 2:
-			return
+		"""Match against the flat list of every cloud file. False when the API call failed."""
 		try:
-			try:
-				response = Premiumize.user_cloud_all(timeout=12)
-			except TypeError:
-				response = Premiumize.user_cloud_all()
+			response = Premiumize.user_cloud_all()
 			if not isinstance(response, dict) or str(response.get('status', '')).lower() != 'success':
-				return
+				return False
 			cloud_files = response.get('files') or []
 			cloud_files = [i for i in cloud_files if isinstance(i, dict) and self._is_video_file(i)]
-		except: return
+		except: return False
 		append = self.scrape_results.append
 		for item in cloud_files:
 			if time.time() > self.scrape_deadline: break
 			label = self._item_label(item)
 			if not self._file_passes(label, item.get('name')): continue
 			append(item)
+		return True
 
 	def _year_query_list(self):
 		if not self.year: return ()

@@ -33,12 +33,6 @@ class source:
 			self.aliases = source_utils.get_aliases_titles(info.get('aliases', []))
 			self.title_queries = self._title_queries()
 			self.scrape_deadline = time.time() + min(25, max(10, int(get_setting('redlight.results.timeout', '20'))))
-			for media_type in ('torrent', 'usenet', 'webdl'):
-				if time.time() >= self.scrape_deadline:
-					break
-				items = self._cached_mylist_items(media_type)
-				if items:
-					self._scrape_cloud_list(media_type, items)
 			def _process():
 				for item in self.scrape_results:
 					try:
@@ -78,7 +72,16 @@ class source:
 						yield source_item
 					except Exception:
 						pass
-			self.sources = list(_process())
+			# Packs are added as torrents: check that list first and skip usenet/webdl once it has a match.
+			for media_type in ('torrent', 'usenet', 'webdl'):
+				if time.time() >= self.scrape_deadline:
+					break
+				items = self._cached_mylist_items(media_type)
+				if items:
+					self._scrape_cloud_list(media_type, items)
+				self.sources = list(_process())
+				if self.sources:
+					break
 		except Exception as e:
 			from modules.kodi_utils import logger
 			logger('torbox scraper Exception', str(e))

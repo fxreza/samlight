@@ -1,3 +1,10 @@
+[COLOR red][B]Version 2.5.0[/B][/COLOR]
+- [B]Cloud check[/B]: with Check Before Full Search on for TB Cloud / PM Cloud, the cloud check now runs at the same time as the external search instead of before it. A cloud match stops the external search and plays right away. No match, no extra wait.
+- [B]Cloud check order[/B]: TorBox comes first and Premiumize is the fallback. Premiumize only wins when TorBox finished with nothing; when both have it, TorBox plays.
+- [B]TB Cloud[/B]: checks the torrents list first and skips the usenet and web download lists when it already has a match.
+- [B]PM Cloud[/B]: one request lists the whole cloud instead of opening up to 24 folders one by one. The folder scan is only used if that request fails.
+- [B]Loading screen[/B]: no longer shows the plot. Episodes keep the season, episode and title line. [B]Show Plot on Loading and Pause[/B] is now [B]Show Plot on Pause[/B].
+
 [COLOR red][B]Version 2.4.3[/B][/COLOR]
 - [B]Playback Options[/B]: [B]Play # Episodes[/B] removed.
 - [B]My Lists[/B]: only [B]TMDb Lists[/B], [B]Trakt Lists[/B] and [B]Trakt Public Lists[/B] remain. MDBList, PunchPlay, Simkl, Personal Lists and Discover Lists are gone from this menu.

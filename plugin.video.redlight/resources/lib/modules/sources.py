@@ -34,6 +34,8 @@ PROP_RESOLVE_CANCEL = 'redlight.resolve_cancelled'
 PROP_PLAY_OPENING = 'redlight.play_opening'
 PROP_BROWSE_RETURN_SOURCES = 'redlight.browse_return_sources'
 PROP_NEXTEP_SCRAPE_READY = 'redlight.nextep_scrape_ready'
+# Cloud check order: TorBox first, Premiumize is the fallback.
+CLOUD_PRIORITY = ('tb_cloud', 'pm_cloud', 'rd_cloud', 'ad_cloud', 'oc_cloud')
 PROP_NEXTEP_SCRAPE_KEY = 'redlight.nextep_scrape_key'
 PROP_NEXTEP_ALERT_KEY = 'redlight.nextep_alert_key'
 PROP_NEXTEP_AUTOPLAY_CANCELLED = 'redlight.nextep_autoplay_cancelled'
@@ -759,6 +761,9 @@ class Sources():
 			self.sources.extend(self.prescrape_sources)
 		self._quality_poll_scrapers = set()
 		self.cloud_scraper_names = []
+		self._early_cloud_hits = {}
+		self._cloud_hit_token = '%s.%s' % (id(self), time.time())
+		kodi_utils.clear_property(external.PROP_CLOUD_HIT)
 		threads_append = self.threads.append
 		if self.active_external:
 			prescrape_ran = getattr(self, 'prescrape_ran_scrapers', set()) or set()
@@ -774,6 +779,7 @@ class Sources():
 			for i in self.providers: threads_append(Thread(target=self.activate_providers, args=(i[0], i[1], False), name=i[2]))
 		if self.threads:
 			[i.start() for i in self.threads]
+			self._start_cloud_hit_watch(self.cloud_scraper_names)
 		if self._user_cancelled_scrape():
 			return []
 		if self.active_external or self.background:
@@ -782,7 +788,8 @@ class Sources():
 				# window properties on the external progress bar (was showing TB_CLOUD etc. for the full timeout).
 				external_progress_scrapers = [i for i in self.internal_scraper_names if i not in self.remove_scrapers]
 				self.external_args = (self.meta, self.external_providers, self.debrid_enabled, self.cache_check_override, external_progress_scrapers,
-										self.prescrape_sources, self.progress_dialog, self.disabled_ext_ignored, self.cloud_scraper_names, self.external_orchestration())
+										self.prescrape_sources, self.progress_dialog, self.disabled_ext_ignored, self.cloud_scraper_names, self.external_orchestration(),
+										self._cloud_hit_token)
 				self.activate_providers('external', external, False)
 			if self._user_cancelled_scrape():
 				return []
@@ -1183,6 +1190,7 @@ class Sources():
 			return
 		# Early cloud scrapers publish via window property only during external scrape.
 		if current_thread().name in self.remove_scrapers:
+			self._early_cloud_hits[current_thread().name] = sources or []
 			return
 		if sources: self.sources.extend(sources)
 
@@ -1206,6 +1214,9 @@ class Sources():
 			active_sources = [i for i in active_sources if settings.cloud_scrape_before_external(i)]
 		else:
 			active_sources = [i for i in active_sources if not (prescrape and not settings.check_prescrape_sources(i, self.media_type))]
+			# Cloud "Check Before Full Search" runs alongside external instead (see _start_cloud_hit_watch).
+			if prescrape and self._parallel_cloud_check():
+				active_sources = [i for i in active_sources if i not in self._cloud_scrapers()]
 		try: sourceDict = [('internal', manual_function_import('scrapers.%s' % i, 'source'), i) for i in active_sources]
 		except: sourceDict = []
 		return sourceDict
@@ -1270,6 +1281,36 @@ class Sources():
 	def _cloud_scrapers(self):
 		return ('rd_cloud', 'pm_cloud', 'ad_cloud', 'oc_cloud', 'tb_cloud')
 
+	def _parallel_cloud_check(self):
+		return self.active_external and not self.background
+
+	def _cloud_hit_found(self):
+		token = getattr(self, '_cloud_hit_token', None)
+		return bool(token) and kodi_utils.get_property(external.PROP_CLOUD_HIT) == token
+
+	def _start_cloud_hit_watch(self, cloud_names):
+		if self.background or not self.autoplay: return
+		watched = [i for i in CLOUD_PRIORITY if i in cloud_names
+					and settings.check_prescrape_sources(i, self.media_type) and settings.autoplay_prescrape(i)]
+		if watched: Thread(target=self._cloud_hit_watch, args=(watched,), daemon=True).start()
+
+	def _cloud_hit_watch(self, watched):
+		"""Stop the external search once the preferred cloud has a playable match.
+		A later cloud (Premiumize) only wins after every earlier one (TorBox) finished empty."""
+		threads = {t.getName(): t for t in self.threads if t.getName() in watched}
+		deadline = time.time() + 60
+		while time.time() < deadline and not self._user_cancelled_scrape():
+			for name in watched:
+				thread = threads.get(name)
+				if thread and thread.is_alive(): break
+				if self._prescrape_autoplay_candidates(self._early_cloud_hits.get(name) or []):
+					kodi_utils.set_property(external.PROP_CLOUD_HIT, self._cloud_hit_token)
+					kodi_utils.logger('Red Light', 'Cloud check: match in %s, stopping external search' % name)
+					return
+			else:
+				return
+			kodi_utils.sleep(100)
+
 	def _prescrape_autoplay_candidates(self, results):
 		autoplay_scrapers = self._cloud_scrapers() + ('easynews', 'aiostreams', 'nzb', 'folders')
 		candidates = [i for i in results if i.get('scrape_provider') in autoplay_scrapers and settings.autoplay_prescrape(i['scrape_provider'])]
@@ -1279,6 +1320,10 @@ class Sources():
 			if provider == 'nzb' and not item.get('nzb_cached'):
 				continue
 			playable.append(item)
+		# Among cloud results, TorBox plays before Premiumize; other results keep their slots.
+		cloud_slots = [n for n, i in enumerate(playable) if i.get('scrape_provider') in CLOUD_PRIORITY]
+		cloud_items = sorted((playable[n] for n in cloud_slots), key=lambda i: CLOUD_PRIORITY.index(i['scrape_provider']))
+		for n, item in zip(cloud_slots, cloud_items): playable[n] = item
 		return playable
 
 	def _is_cloud_result(self, item):
@@ -1741,7 +1786,7 @@ class Sources():
 			timeout = min(35, max(15, int(get_setting('redlight.results.timeout', '20')) + 10))
 		start_time, deadline = time.time(), time.time() + timeout
 		while time.time() < deadline:
-			if self._user_cancelled_scrape():
+			if self._user_cancelled_scrape() or self._cloud_hit_found():
 				break
 			alive = [t.getName() for t in self.threads if t.is_alive()]
 			self._poll_scraper_quality_counts()
@@ -1803,7 +1848,7 @@ class Sources():
 		"""Wait for cloud/internal threads; cap wait so a stuck scraper cannot block results forever."""
 		deadline = time.time() + timeout
 		for thread in self.threads:
-			if self._user_cancelled_scrape():
+			if self._user_cancelled_scrape() or self._cloud_hit_found():
 				break
 			remaining = deadline - time.time()
 			if remaining <= 0:

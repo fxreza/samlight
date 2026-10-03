@@ -11,6 +11,9 @@ from modules.settings import debrid_cache_check, max_threads
 from modules.utils import clean_file_name
 # logger = kodi_utils.logger
 
+# Set by modules.sources (value = that scrape's token) when a cloud match wins; external stops early.
+PROP_CLOUD_HIT = 'redlight.scrape.cloud_hit'
+
 _INTERNAL_PROGRESS_LABELS = {
 	'aiostreams': 'AIOStreams',
 	'easynews': 'EasyNews',
@@ -29,8 +32,9 @@ _INTERNAL_PROGRESS_LABELS = {
 }
 
 class source:
-	def __init__(self, meta, source_dict, active_debrid, cache_check_override, internal_scrapers, prescrape_sources, progress_dialog, disabled_ext_ignored=False, cloud_scrapers=None, external_orchestration=None):
+	def __init__(self, meta, source_dict, active_debrid, cache_check_override, internal_scrapers, prescrape_sources, progress_dialog, disabled_ext_ignored=False, cloud_scrapers=None, external_orchestration=None, cloud_hit_token=None):
 		self.monitor = kodi_utils.kodi_monitor()
+		self.cloud_hit_token = cloud_hit_token
 		self.scrape_provider = 'external'
 		self.progress_dialog = progress_dialog
 		self.cache_check_override = cache_check_override
@@ -117,6 +121,7 @@ class source:
 					line1 = self._format_progress_line1(external_threads, internal_pending)
 					percent = min(100, int((max((time.time() - start_time), 0) / float(self.timeout)) * 100))
 					self.progress_dialog.update_scraper(self.sources_sd, self.sources_720p, self.sources_1080p, self.sources_4k, self.sources_total, line1, percent)
+					if self._cloud_hit(): break
 					if self.threads_completed:
 						if not external_threads and not internal_pending: break
 					if percent >= 100:
@@ -149,10 +154,15 @@ class source:
 		return []
 
 	def _scrape_was_cancelled(self):
+		if self._cloud_hit(): return True
 		try:
 			return bool(self.progress_dialog and self.progress_dialog.iscanceled())
 		except:
 			return False
+
+	def _cloud_hit(self):
+		"""A cloud check (run alongside this search) found a playable match, so stop searching."""
+		return bool(self.cloud_hit_token) and kodi_utils.get_property(PROP_CLOUD_HIT) == self.cloud_hit_token
 
 	def _prepare_episode_source_dict(self):
 		self.source_dict = [i for i in self.source_dict if i[1].hasEpisodes]
@@ -266,6 +276,7 @@ class source:
 					elapsed = max((time.time() - batch_start), 0)
 					percent = min(100, (elapsed / float(batch_timeout)) * 100)
 					self.progress_dialog.update_scraper(self.sources_sd, self.sources_720p, self.sources_1080p, self.sources_4k, self.sources_total, line1, percent)
+					if self._cloud_hit(): break
 					if self.threads_completed:
 						if not external_threads and not internal_pending: break
 					if time.time() >= batch_start + batch_timeout:
@@ -313,6 +324,7 @@ class source:
 	def process_movie_threads(self):
 		try:
 			for i in self.source_dict:
+				if self._cloud_hit(): break
 				provider_label, module, pack, cache_key, source_provider, external_module = self._source_entry(i)
 				self._wait_for_thread_capacity()
 				threaded_object = Thread(target=self.get_movie_source, args=(provider_label, module, cache_key, source_provider, external_module), name=provider_label)
@@ -327,6 +339,7 @@ class source:
 	def process_episode_threads(self):
 		try:
 			for i in self.source_dict:
+				if self._cloud_hit(): break
 				provider_label, module, pack, cache_key, source_provider, external_module = self._source_entry(i)
 				if pack: provider_display = '%s (%s)' % (provider_label, pack)
 				else: provider_display = provider_label
@@ -504,6 +517,7 @@ class source:
 					percent = min(100, int((current_progress / float(debrid_timeout)) * 100))
 					self.progress_dialog.update_scraper(self.final_sd, self.final_720p, self.final_1080p, self.final_4k, self.final_total, line1, percent)
 					kodi_utils.sleep(100)
+					if self._cloud_hit(): break
 					if len(remaining_debrids) == 0: break
 					if time.time() >= debrid_deadline: break
 				except: pass
