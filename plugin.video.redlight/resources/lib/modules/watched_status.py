@@ -534,6 +534,14 @@ def _drop_from_favorites(action, media_type, tmdb_id):
 		from modules.kodi_utils import logger
 		logger('Favourites', 'auto remove skipped: %s' % e)
 
+def _forget_last_source(action, media_type, tmdb_id, season='', episode=''):
+	"""Watched: a rewatch searches again. The show's saved pack stays for its next episodes."""
+	if action != 'mark_as_watched': return
+	try:
+		from modules import last_sources
+		last_sources.forget_title(media_type, tmdb_id, season, episode)
+	except Exception: pass
+
 def mark_movie(params):
 	action, media_type = params.get('action'), 'movie'
 	refresh, from_playback = params.get('refresh', 'true') == 'true', params.get('from_playback', 'false') == 'true'
@@ -556,6 +564,7 @@ def mark_movie(params):
 			return notification('Error')
 	_arm_provider_list_sync_skip(watched_indicators)
 	watched_status_mark(watched_indicators, media_type, tmdb_id, action, title=title)
+	_forget_last_source(action, 'movie', tmdb_id)
 	_drop_from_favorites(action, 'movie', tmdb_id)
 	_schedule_playback_widget_refresh(from_playback)
 	refresh_container(refresh)
@@ -674,6 +683,7 @@ def mark_episode(params):
 			return notification('Error')
 	_arm_provider_list_sync_skip(watched_indicators)
 	watched_status_mark(watched_indicators, media_type, tmdb_id, action, season, episode, title)
+	_forget_last_source(action, 'episode', tmdb_id, season, episode)
 	# One episode watched is enough: the show leaves Favourites.
 	_drop_from_favorites(action, 'tvshow', tmdb_id)
 	update_hidden_progress(tmdb_id)

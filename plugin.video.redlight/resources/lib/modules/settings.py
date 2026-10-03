@@ -180,6 +180,9 @@ def limit_resolve():
 def reconnect_on_drop():
 	return get_setting('redlight.playback.reconnect_on_drop', 'true') == 'true'
 
+def resume_last_source():
+	return get_setting('redlight.playback.resume_last_source', 'true') == 'true'
+
 def movies_directory():
 	return translate_path(get_setting('redlight.movies_directory'))
 	
@@ -1625,6 +1628,6 @@ def use_season_name():
 	return get_setting('redlight.use_season_name', 'false') == 'true'
 
 def show_clearlogo():
-	return get_setting('redlight.send_clearlogo', 'true') == 'true'
+	return get_setting('redlight.send_clearlogo', 'false') == 'true'
 
 

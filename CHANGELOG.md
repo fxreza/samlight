@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.0.1] - 2026-10-03
+
+- New setting Playback > Resume from Last Source (on by default). Playing a movie or episode again plays the source it last played from, with no search, so it starts much faster, also after a crash. The source is saved when playback starts and dropped once the title is marked watched, or after 14 days. If it no longer plays, the normal search runs.
+- Season and show packs: once an episode plays from a pack (a torrent pack on any debrid, or a TorBox cloud folder), the next episodes play from the same pack, with no search for manual plays and first in line for Autoplay Next Episode. Kept for 30 days per show.
+- Playback Options (Select Source, Rescrape, Scrape with...) always search, so you can still pick another source.
+- Show/Hide Clear Logo is now off by default (text titles). This only changes new installs; an existing choice stays as it is.
+
 ## [2.7.1.1] - 2026-10-03
 
 - Reconnect after a stream drop checks whether the internet works, not the stream server. A dead debrid server now moves straight on instead of waiting and giving up.

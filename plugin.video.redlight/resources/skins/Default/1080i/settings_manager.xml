@@ -1055,7 +1055,7 @@
                           <property name="setting_label">Show/Hide Clear Logo</property>
                           <property name="setting_type">boolean</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.send_clearlogo)]</property>
-                          <property name="setting_description">When enabled (default), the clear logo is shown instead of the title. Turn it off to show the text title everywhere: skin widgets and lists (Arctic Fuse 3 has no option of its own), the player, and Red Light's own screens (source search and results, next episode, still watching, skip intro, extras).</property>
+                          <property name="setting_description">When enabled, the clear logo is shown instead of the title. Off by default to show the text title everywhere: skin widgets and lists (Arctic Fuse 3 has no option of its own), the player, and Red Light's own screens (source search and results, next episode, still watching, skip intro, extras).</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=send_clearlogo)</onclick>
                       </item>
                       <item>
@@ -4368,6 +4368,14 @@
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.playback.reconnect_on_drop)]</property>
                           <property name="setting_description">Enabled (default): if the stream ends more than 5 minutes early or freezes for 30 seconds without being paused, usually after a short network drop or a debrid server failing, Red Light waits up to 20 seconds if the internet is down, then plays the same source again from just before the drop. If that fails it goes on down your results in list order, whichever service they are on, and runs the full search first if only the quick cloud check had run. Cancel the wait to stop and keep your progress.</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=playback.reconnect_on_drop)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(80)</visible>
+                          <property name="setting_label">Resume from Last Source</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.playback.resume_last_source)]</property>
+                          <property name="setting_description">Enabled (default): playing a movie or episode again plays the source it last played from, with no search, so it starts much faster. An episode from a season or show pack makes the next episodes play from the same pack too. The saved source is dropped once the title is marked watched, or after 14 days (packs after 30). If it no longer plays, the normal search runs. To pick another source, use Playback Options (Select Source, Rescrape, Scrape with...).</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=playback.resume_last_source)</onclick>
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(80)</visible>

@@ -8,6 +8,45 @@ from modules.settings import enabled_debrids_check, filter_by_name
 from caches.settings_cache import get_setting
 # from modules.kodi_utils import logger
 
+def _source_item(item, file_name, file_name_latin, folder_id, cloud_media_type, scrape_provider='tb_cloud'):
+	display_name = clean_file_name(file_name).replace('html', ' ').replace('+', ' ').replace('-', ' ')
+	file_id = TorBoxAPI._torrent_file_id(item)
+	try:
+		size_bytes = int(item.get('size') or 0)
+	except Exception:
+		size_bytes = 0
+	size = round(size_bytes / 1073741824, 2) if size_bytes else 0.0
+	size_label = '%.2f GB' % size if size_bytes else 'N/A'
+	file_dl = '%d,%d' % (int(folder_id), int(file_id))
+	video_quality, details = source_utils.get_file_info(name_info=source_utils.release_info_format(file_name_latin))
+	return {
+		'name': file_name, 'display_name': display_name, 'quality': video_quality, 'size': size,
+		'size_label': size_label, 'debrid': scrape_provider, 'extraInfo': details,
+		'url_dl': file_dl, 'id': file_dl, 'downloads': False, 'direct': True,
+		'source': scrape_provider, 'scrape_provider': scrape_provider,
+		'folder_id': folder_id,
+		'cloud_media_type': cloud_media_type,
+	}
+
+def pack_episode_item(folder_id, cloud_media_type, season, episode, absolute_episode=None):
+	'''This episode's file in the TorBox cloud folder the show last played from, or None.'''
+	try:
+		files = TorBox.mylist_item_files(folder_id, cloud_media_type or 'torrent')
+	except Exception:
+		return None
+	extensions = source_utils.supported_video_extensions()
+	for item in files or []:
+		try:
+			if not TorBoxAPI.is_scrapeable_cloud_file(item, extensions): continue
+			file_name = TorBoxAPI._torrent_file_label(item)
+			file_name_latin = normalize(file_name) or file_name
+			if not source_utils.cloud_episode_matches(season, episode, file_name_latin, absolute_episode): continue
+			if TorBoxAPI._torrent_file_id(item) is None: continue
+			return _source_item(item, file_name, file_name_latin, folder_id, cloud_media_type or 'torrent')
+		except Exception:
+			pass
+	return None
+
 class source:
 	def __init__(self):
 		self.scrape_provider = 'tb_cloud'
@@ -49,27 +88,9 @@ class source:
 								continue
 						elif filter_title and not source_utils.check_title(title, file_name_latin, self.aliases, self.year, self.season, self.episode):
 							continue
-						display_name = clean_file_name(file_name).replace('html', ' ').replace('+', ' ').replace('-', ' ')
-						file_id = TorBoxAPI._torrent_file_id(item)
-						if file_id is None:
+						if TorBoxAPI._torrent_file_id(item) is None:
 							continue
-						try:
-							size_bytes = int(item.get('size') or 0)
-						except Exception:
-							size_bytes = 0
-						size = round(size_bytes / 1073741824, 2) if size_bytes else 0.0
-						size_label = '%.2f GB' % size if size_bytes else 'N/A'
-						file_dl = '%d,%d' % (int(item['folder_id']), int(file_id))
-						video_quality, details = source_utils.get_file_info(name_info=source_utils.release_info_format(file_name_latin))
-						source_item = {
-							'name': file_name, 'display_name': display_name, 'quality': video_quality, 'size': size,
-							'size_label': size_label, 'debrid': self.scrape_provider, 'extraInfo': details,
-							'url_dl': file_dl, 'id': file_dl, 'downloads': False, 'direct': True,
-							'source': self.scrape_provider, 'scrape_provider': self.scrape_provider,
-							'folder_id': item['folder_id'],
-							'cloud_media_type': item.get('cloud_media_type', 'torrent'),
-						}
-						yield source_item
+						yield _source_item(item, file_name, file_name_latin, item['folder_id'], item.get('cloud_media_type', 'torrent'))
 					except Exception:
 						pass
 			# Packs are added as torrents: check that list first and skip usenet/webdl once it has a match.

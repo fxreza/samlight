@@ -140,6 +140,8 @@ class RedLightPlayer(xbmc.Player):
 						self.sources_object.playback_successful = True
 						self.sources_object._release_resolve_busy()
 						self.sources_object._release_sources_busy()
+						# Saved at start, not stop, so a crash still keeps it.
+						self.sources_object._remember_played_source()
 				except:
 					pass
 				self._seek_to_resume_if_needed()

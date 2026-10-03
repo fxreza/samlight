@@ -1587,7 +1587,7 @@ def default_settings():
 {'setting_id': 'show_specials', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'exclude_specials_progress', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'use_season_name', 'setting_type': 'boolean', 'setting_default': 'false'},
-{'setting_id': 'send_clearlogo', 'setting_type': 'boolean', 'setting_default': 'true'},
+{'setting_id': 'send_clearlogo', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'default_all_episodes', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'Never', '1': 'If Only One Season', '2': 'Always'}},
 {'setting_id': 'avoid_episode_spoilers', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'show_loading_plot', 'setting_type': 'boolean', 'setting_default': 'true'},
@@ -2012,6 +2012,7 @@ def default_settings():
 #==================== Playback Utilities
 {'setting_id': 'playback.limit_resolve', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'playback.reconnect_on_drop', 'setting_type': 'boolean', 'setting_default': 'true'},
+{'setting_id': 'playback.resume_last_source', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'easynews.playback_method', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'None', '1': 'Retry', '2': 'No Seek', '3': 'Both'}},
 {'setting_id': 'easynews.playback_method_retries', 'setting_type': 'action', 'setting_default': '1', 'min_value': '1', 'max_value': '8'},
 {'setting_id': 'easynews.playback_method_limited', 'setting_type': 'boolean', 'setting_default': 'false'},

@@ -10,7 +10,7 @@ from windows.base_window import open_window, create_window
 from caches.episode_groups_cache import episode_groups_cache
 from caches.settings_cache import get_setting
 from scrapers import external, folders
-from modules import debrid, kodi_utils, settings, metadata, slow_hosts, watched_status
+from modules import debrid, kodi_utils, settings, metadata, last_sources, slow_hosts, watched_status
 from modules.player import RedLightPlayer
 from modules.source_utils import get_cache_expiry, make_alias_dict, include_exclude_filters, get_file_info, release_info_format, audio_lang_choices, matches_english_or_untagged
 from modules.release_groups import release_group_boost
@@ -712,6 +712,8 @@ class Sources():
 		self._get_sources_depth = depth + 1
 		try:
 			if depth == 0:
+				kind, saved = self._saved_source_to_play()
+				if saved: return self._play_saved_source(kind, saved)
 				self._log_prescrape_settings()
 			if not self.progress_dialog and not self.background: self._make_progress_dialog()
 			results = []
@@ -748,6 +750,7 @@ class Sources():
 				results = self.process_results(self.orig_results)
 			if self._user_cancelled_scrape():
 				return self._finish_scrape_cancel()
+			if self.background: results = self._prefer_saved_pack(results)
 			if not results:
 				return self._process_post_results()
 			if self.autoscrape: return results
@@ -1377,6 +1380,8 @@ class Sources():
 			if self._effective_autoplay():
 				external = self._external_autoplay_candidates(results)
 				if external: autoplay_queue = external
+			# The next episode plays from the pack the show last played from, if it has it.
+			autoplay_queue = self._prefer_saved_pack(autoplay_queue)
 			if self.autoplay_nextep and not self.autoscrape_nextep:
 				return self._stash_nextep_autoplay_play(autoplay_queue)
 			return self.play_file(autoplay_queue)
@@ -1559,6 +1564,81 @@ class Sources():
 	def _mark_source_tried(self, item):
 		try: self._tried_sources().add(self._source_key(item))
 		except Exception: pass
+
+	def _manual_source_request(self):
+		# Playback Options (Select Source, Rescrape, Scrape with ...) always search.
+		get = self.params.get
+		if get('prescrape') == 'false' or get('autoplay') == 'false': return True
+		return any(get(i) for i in ('custom_title', 'custom_year', 'custom_season', 'custom_episode',
+									'disabled_ext_ignored', 'ignore_scrape_filters', 'external_cache_check'))
+
+	def _saved_source_to_play(self):
+		'''(kind, item) to play without searching: the source this title last played
+		from, or this episode's file in the pack the show last played from.'''
+		try:
+			if self.background or self.media_type not in ('movie', 'episode'): return None, None
+			if not settings.resume_last_source() or self._manual_source_request(): return None, None
+			item = last_sources.get_title(self.media_type, self.tmdb_id, self.season, self.episode)
+			if item: return 'title', item
+			item = self._saved_pack_item()
+			if item: return 'pack', item
+		except Exception as e:
+			kodi_utils.logger('Red Light', 'Last source check failed: %s' % e)
+		return None, None
+
+	def _saved_pack_item(self):
+		if hasattr(self, '_saved_pack_item_cache'): return self._saved_pack_item_cache
+		item = None
+		try:
+			pack = last_sources.get_pack(self.tmdb_id) if self.media_type == 'episode' else None
+			if pack and last_sources.pack_covers(pack, self.season):
+				if pack['kind'] == 'torrent':
+					# Resolving a pack picks this episode's file from it.
+					item = dict(pack['item'])
+				elif pack['kind'] == 'tb_cloud':
+					from scrapers.tb_cloud import pack_episode_item
+					info = getattr(self, 'search_info', {}) or {}
+					item = pack_episode_item(pack['folder_id'], pack.get('cloud_media_type'), info.get('season', self.season),
+											info.get('episode', self.episode), info.get('absolute_episode'))
+		except Exception as e:
+			kodi_utils.logger('Red Light', 'Saved pack check failed: %s' % e)
+		self._saved_pack_item_cache = item
+		return item
+
+	def _prefer_saved_pack(self, results):
+		'''Background next episode: the saved pack goes first, the search results follow.'''
+		if self.media_type != 'episode' or not settings.resume_last_source(): return results
+		item = self._saved_pack_item()
+		if not item: return results
+		key = self._source_key(item)
+		return [item] + [i for i in (results or []) if self._source_key(i) != key]
+
+	def _play_saved_source(self, kind, item):
+		kodi_utils.logger('Red Light', 'Playing the last source (%s), no search: %s' % (kind, item.get('name')))
+		self._saved_source_attempt = kind
+		return self.play_file([item])
+
+	def _fallback_from_saved_source(self):
+		'''The last source would not play (or dropped and nothing recovered it): forget it
+		and run the normal search. After a drop, carry on down the results.'''
+		kind = getattr(self, '_saved_source_attempt', None)
+		if not kind: return False
+		self._saved_source_attempt = None
+		if kind == 'title': last_sources.forget_title(self.media_type, self.tmdb_id, self.season, self.episode)
+		else: last_sources.forget_pack(self.tmdb_id)
+		kodi_utils.logger('Red Light', 'Last source (%s) failed: running the normal search' % kind)
+		self._kill_progress_dialog(join_timeout=1.0)
+		self.resolve_dialog_made = False
+		if getattr(self, '_reconnect_attempts', 0): self._drop_play_rest = True
+		self.get_sources()
+		return True
+
+	def _remember_played_source(self):
+		try:
+			if not settings.resume_last_source(): return
+			last_sources.remember(self.media_type, self.tmdb_id, self.season, self.episode, getattr(self, 'playing_item', None))
+		except Exception as e:
+			kodi_utils.logger('Red Light', 'Last source not saved: %s' % e)
 
 	def _continue_after_drop(self):
 		"""A stream dropped mid-playback and every queued source failed. When only the
@@ -2649,6 +2729,9 @@ class Sources():
 
 	def play_file(self, results, source={}):
 		playable_results = [i for i in results if 'Uncached' not in i.get('cache_provider', '')]
+		if not source and self._tried_sources():
+			# Back from a failed last source or a stream drop: do not queue what already failed.
+			playable_results = [i for i in playable_results if self._source_key(i) not in self._tried_sources()]
 		if not playable_results and not source:
 			return self._no_results()
 		if not self.background:
@@ -2884,6 +2967,8 @@ class Sources():
 	def playback_failed_action(self):
 		if self._user_cancelled_resolve():
 			return self._finish_resolve_cancel()
+		if self._fallback_from_saved_source():
+			return
 		if self._continue_after_drop():
 			return
 		if self.cloud_prescrape_autoplay:
