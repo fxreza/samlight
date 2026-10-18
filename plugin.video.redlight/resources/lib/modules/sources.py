@@ -10,7 +10,7 @@ from windows.base_window import open_window, create_window
 from caches.episode_groups_cache import episode_groups_cache
 from caches.settings_cache import get_setting
 from scrapers import external, folders
-from modules import debrid, kodi_utils, settings, metadata, last_sources, slow_hosts, stream_check, watched_status
+from modules import debrid, kodi_utils, settings, metadata, last_sources, slow_hosts, watched_status
 from modules.player import RedLightPlayer
 from modules.source_utils import get_cache_expiry, make_alias_dict, include_exclude_filters, get_file_info, release_info_format, audio_lang_choices, matches_english_or_untagged
 from modules.release_groups import release_group_boost
@@ -1523,10 +1523,7 @@ class Sources():
 			elif action == 'play':
 				kodi_utils.clear_property(PROP_RESOLVE_CANCEL)
 				self._log_nextep_resolve_diag(chosen_item, phase='pick')
-				self._picked_from_list = True
-				try: outcome = self.play_file(results, chosen_item)
-				finally: self._picked_from_list = False
-				if outcome == 'back_to_list': continue
+				self.play_file(results, chosen_item)
 				return
 			elif self.prescrape and action == 'perform_full_search':
 				self._prepare_full_search_followup()
@@ -2815,7 +2812,6 @@ class Sources():
 			if not self.resolve_dialog_made: self._make_resolve_dialog()
 			if self.background: kodi_utils.sleep(1000)
 			monitor = kodi_utils.kodi_monitor()
-			link_check_failed = False
 			for count, item in enumerate(items, 1):
 				try:
 					if self._resolve_user_cancelled or self.cancel_all_playback:
@@ -2893,20 +2889,6 @@ class Sources():
 								self._resolve_user_cancelled = True
 								self.cancel_all_playback = True
 								break
-							# Test the link before Kodi's player gets it: a link whose server stalls
-							# can hang Kodi for good once the player opens it, Back included.
-							if settings.check_links():
-								check = stream_check.check(url, self._user_cancelled_resolve, self._show_resolve_percent)
-								if check == stream_check.CANCELLED:
-									self._resolve_user_cancelled = True
-									self.cancel_all_playback = True
-									break
-								if check == stream_check.BAD:
-									slow_hosts.mark_slow(url)
-									if getattr(self, '_picked_from_list', False):
-										link_check_failed = True
-										break
-									continue
 							if self._nextep_aio_en_fresh_start(item):
 								self.playback_percent = 0.0
 								self._stop_active_playback()
@@ -2939,8 +2921,6 @@ class Sources():
 		except:
 			self._kill_progress_dialog()
 		else:
-			if self._back_to_list_after(link_check_failed, monitor):
-				return 'back_to_list'
 			if self.cancel_all_playback or self._resolve_user_cancelled:
 				self._finish_resolve_cancel()
 			elif not self.playback_successful or not url:
@@ -2958,31 +2938,6 @@ class Sources():
 			self._release_resolve_busy()
 			try: del monitor
 			except: pass
-
-	def _show_resolve_percent(self, percent):
-		try:
-			if self.progress_dialog: self.progress_dialog.update_resolver(percent=percent)
-		except: pass
-
-	def _back_to_list_after(self, link_check_failed, monitor):
-		'''A link picked from the results list did not pass the link check, or Back was
-		pressed while it opened: close the loading screen and show the list again.'''
-		if not getattr(self, '_picked_from_list', False) or self.playback_successful: return False
-		if not (link_check_failed or self.cancel_all_playback or self._resolve_user_cancelled): return False
-		try:
-			if monitor and monitor.abortRequested(): return False
-		except: pass
-		kodi_utils.logger('Red Light', 'Back to the results list (%s)' % ('link check failed' if link_check_failed else 'cancelled'))
-		close_nextep_handoff_cover()
-		if kodi_utils.get_property(PROP_PLAY_OPENING) == 'true': self._request_player_stop(light=True)
-		kodi_utils.clear_property(PROP_PLAY_OPENING)
-		kodi_utils.clear_property(PROP_RESOLVE_CANCEL)
-		self._kill_progress_dialog(join_timeout=0.5, resolve_cancel=True)
-		self.resolve_dialog_made = False
-		self.playback_successful, self.cancel_all_playback, self._resolve_user_cancelled = None, False, False
-		kodi_utils.hide_busy_dialog()
-		if link_check_failed: kodi_utils.notification('Link not responding, pick another', 3000)
-		return True
 
 	def get_playback_percent(self):
 		if self.media_type == 'movie': percent = watched_status.get_progress_status_movie(watched_status.get_bookmarks_movie(), str(self.tmdb_id))

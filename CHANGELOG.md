@@ -1,9 +1,8 @@
 # Changelog
 
-## [2.8.1.1] - 2026-10-18
+## [2.8.1.2] - 2026-10-18
 
-- New setting Playback > Check Links Before Playing (on by default). Before Kodi's player opens a link, Sam Light checks that the server sends the start and the end of the file quickly (12 seconds at most, about a second on a good link). A dead, stalling or very slow link is never given to the player, so Kodi cannot freeze on it. Back stops the check at once.
-- A link picked from the results list that fails the check, or Back pressed while it opens, goes back to the results list instead of closing everything. With Autoplay the next source is tried.
+- Removed the link check and back-to-list change from 2.8.1.1; it did not stop the freezes. Same as 2.8.0.1, with a higher number so Kodi installs it.
 
 ## [2.8.0.1] - 2026-10-03
 

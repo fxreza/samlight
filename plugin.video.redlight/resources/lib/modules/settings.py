@@ -183,9 +183,6 @@ def reconnect_on_drop():
 def resume_last_source():
 	return get_setting('redlight.playback.resume_last_source', 'true') == 'true'
 
-def check_links():
-	return get_setting('redlight.playback.check_links', 'true') == 'true'
-
 def movies_directory():
 	return translate_path(get_setting('redlight.movies_directory'))
 	

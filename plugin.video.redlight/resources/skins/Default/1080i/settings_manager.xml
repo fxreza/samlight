@@ -4379,14 +4379,6 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(80)</visible>
-                          <property name="setting_label">Check Links Before Playing</property>
-                          <property name="setting_type">boolean</property>
-                          <property name="setting_value">$INFO[Window(10000).Property(redlight.playback.check_links)]</property>
-                          <property name="setting_description">Enabled (default): before Kodi's player opens a link, Red Light makes sure the server sends the start and the end of the file quickly (up to 12 seconds). A link that does not answer is never handed to the player, because Kodi can freeze for good while it opens one, with no way out but a force close. A link you picked from the results list takes you back to the list; with Autoplay the next source is tried. Back stops the check at once. Adds about a second to each start on a good link.</property>
-                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=playback.check_links)</onclick>
-                      </item>
-                      <item>
-                          <visible>Container(2000).HasFocus(80)</visible>
                           <visible>[String.IsEqual(Window(10000).Property(redlight.provider.easynews),true) + ![String.IsEmpty(Window(10000).Property(redlight.easynews_user)) + String.IsEmpty(Window(10000).Property(redlight.easynews_password))]] | String.IsEqual(Window(10000).Property(redlight.provider.aiostreams),true)</visible>
                           <property name="setting_label">EasyNews Playback Method</property>
                           <property name="setting_type">action</property>
