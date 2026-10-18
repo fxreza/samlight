@@ -2013,6 +2013,7 @@ def default_settings():
 {'setting_id': 'playback.limit_resolve', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'playback.reconnect_on_drop', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'playback.resume_last_source', 'setting_type': 'boolean', 'setting_default': 'true'},
+{'setting_id': 'playback.check_links', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'easynews.playback_method', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'None', '1': 'Retry', '2': 'No Seek', '3': 'Both'}},
 {'setting_id': 'easynews.playback_method_retries', 'setting_type': 'action', 'setting_default': '1', 'min_value': '1', 'max_value': '8'},
 {'setting_id': 'easynews.playback_method_limited', 'setting_type': 'boolean', 'setting_default': 'false'},

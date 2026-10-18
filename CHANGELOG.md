@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.8.1.1] - 2026-10-18
+
+- New setting Playback > Check Links Before Playing (on by default). Before Kodi's player opens a link, Sam Light checks that the server sends the start and the end of the file quickly (12 seconds at most, about a second on a good link). A dead, stalling or very slow link is never given to the player, so Kodi cannot freeze on it. Back stops the check at once.
+- A link picked from the results list that fails the check, or Back pressed while it opens, goes back to the results list instead of closing everything. With Autoplay the next source is tried.
+
 ## [2.8.0.1] - 2026-10-03
 
 - New setting Playback > Resume from Last Source (on by default). Playing a movie or episode again plays the source it last played from, with no search, so it starts much faster, also after a crash. The source is saved when playback starts and dropped once the title is marked watched, or after 14 days. If it no longer plays, the normal search runs.

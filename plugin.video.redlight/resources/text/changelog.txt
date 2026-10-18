@@ -1,3 +1,7 @@
+[COLOR red][B]Version 2.8.1[/B][/COLOR]
+- [B]Playback[/B]: new setting Playback > Check Links Before Playing, on by default. Before Kodi's player opens a link, Sam Light checks that the server sends the start and end of the file quickly (12 seconds at most). A link that does not answer is never given to the player, so Kodi no longer freezes on it.
+- [B]Playback[/B]: a link picked from the results list that fails the check, or Back pressed while it opens, takes you back to the results list. With Autoplay the next source is tried.
+
 [COLOR red][B]Version 2.8.0[/B][/COLOR]
 - [B]Playback[/B]: new setting Playback > Resume from Last Source, on by default. Playing a movie or episode again plays the source it last played from, with no search, so it starts much faster, also after a crash. The source is saved when playback starts and dropped once the title is marked watched, or after 14 days. If it no longer plays, the normal search runs.
 - [B]Playback[/B]: once an episode plays from a season or show pack (a torrent pack on any debrid, or a TorBox cloud folder), the next episodes play from the same pack, with no search for manual plays and first in line for Autoplay Next Episode. Kept for 30 days per show.
