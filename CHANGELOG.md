@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.10.1.1] - 2026-10-22
+
+- TV Shows Progress Manager: the Drop / Undrop text and the red [DROPPED] tag show again. 2.10.0 let skins show the plain show title or its clear logo instead.
+- Long press a show in the TV Shows Progress Manager for Drop TV Show or Undrop TV Show, above Browse Seasons. Selecting a show still drops or undrops it.
+
 ## [2.10.0.1] - 2026-10-22
 
 - TV Shows Progress Manager shows each show's poster and fanart, like the other TV show lists.

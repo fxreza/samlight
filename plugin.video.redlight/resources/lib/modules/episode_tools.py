@@ -157,14 +157,16 @@ def build_next_episode_manager(params={}):
 			try: meta = tvshow_meta('tmdb_id', str(tmdb_id), api_key, mpaa_region_value, current_date) or {}
 			except: meta = {}
 			poster, fanart = meta.get('poster') or icon, meta.get('fanart') or addon_fanart
-			listitem.setArt({'poster': poster, 'thumb': poster, 'icon': poster, 'fanart': fanart,
-							'landscape': meta.get('landscape') or fanart, 'clearlogo': meta.get('clearlogo') or ''})
+			# No clear logo: skins would draw it instead of the Drop / Undrop text and the [DROPPED] tag.
+			listitem.setArt({'poster': poster, 'thumb': poster, 'icon': poster, 'fanart': fanart, 'landscape': meta.get('landscape') or fanart})
 			info_tag = listitem.getVideoInfoTag(True)
 			info_tag.setMediaType('tvshow')
-			info_tag.setTitle(title)
+			# TV show views show the title, not the label, so the title carries the same text.
+			info_tag.setTitle(display)
 			info_tag.setPlot(meta.get('plot') or ' ')
-			# Selecting a show drops or undrops it, so seasons are one long press away, as in other lists.
-			listitem.addContextMenuItems([('[B]Browse Seasons[/B]', 'Container.Update(%s)' % build_url({'mode': 'build_season_list', 'tmdb_id': tmdb_id}))])
+			# Selecting a show drops or undrops it; the long press offers the same, plus seasons as in other lists.
+			listitem.addContextMenuItems([('[B]%s TV Show[/B]' % ('Undrop' if dropped else 'Drop'), 'RunPlugin(%s)' % url),
+				('[B]Browse Seasons[/B]', 'Container.Update(%s)' % build_url({'mode': 'build_season_list', 'tmdb_id': tmdb_id}))])
 			append({'listitem': (url, listitem, False), 'sort_title': title})
 		except: pass
 	handle = int(sys.argv[1])
@@ -186,10 +188,13 @@ def build_next_episode_manager(params={}):
 	item_list = sorted(list_items, key=lambda k: (title_key(k['sort_title'], ignore_articles())), reverse=False)
 	item_list = [i['listitem'] for i in item_list]
 	filter_item = make_listitem()
-	filter_item.setLabel('[B]Show: %s[/B]  [I](%s)[/I]' % (dict(NEXTEP_MANAGER_FILTERS).get(show_filter, 'All'), len(item_list)))
+	filter_label = '[B]Show: %s[/B]  [I](%s)[/I]' % (dict(NEXTEP_MANAGER_FILTERS).get(show_filter, 'All'), len(item_list))
+	filter_item.setLabel(filter_label)
 	filter_icon = kodi_utils.get_icon('settings2')
 	filter_item.setArt({'poster': filter_icon, 'thumb': filter_icon, 'icon': filter_icon, 'fanart': addon_fanart})
-	filter_item.getVideoInfoTag(True).setPlot('Choose which shows to list: all of them, only dropped shows, or only shows that are not dropped.')
+	filter_tag = filter_item.getVideoInfoTag(True)
+	filter_tag.setTitle(filter_label)
+	filter_tag.setPlot('Choose which shows to list: all of them, only dropped shows, or only shows that are not dropped.')
 	item_list.insert(0, (build_url({'mode': 'next_episode_manager_filter', 'show_filter': show_filter}), filter_item, False))
 	kodi_utils.add_items(handle, item_list)
 	kodi_utils.set_content(handle, 'tvshows')

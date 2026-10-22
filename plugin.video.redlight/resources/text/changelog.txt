@@ -1,3 +1,7 @@
+[COLOR red][B]Version 2.10.1[/B][/COLOR]
+- [B]TV Shows Progress Manager[/B]: the Drop / Undrop text and the red [DROPPED] tag show again.
+- [B]TV Shows Progress Manager[/B]: long press a show for Drop TV Show or Undrop TV Show, above Browse Seasons. Selecting a show still drops or undrops it.
+
 [COLOR red][B]Version 2.10.0[/B][/COLOR]
 - [B]TV Shows Progress Manager[/B]: shows each show's poster and fanart, like the other TV show lists.
 - [B]TV Shows Progress Manager[/B]: new Show row at the top to list All shows, only Dropped shows, or only Not Dropped shows, with a count of the shows listed.
