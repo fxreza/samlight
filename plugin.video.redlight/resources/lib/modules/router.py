@@ -98,6 +98,9 @@ def routing(sys):
 			return exec('trakt_lists.%s(params)' % mode.split('.')[2])
 		from apis import trakt_api
 		return exec('trakt_api.%s(params)' % mode.split('.')[1])
+	elif mode == 'next_episode_manager_filter':
+		from modules.episode_tools import next_episode_manager_filter
+		return next_episode_manager_filter(params)
 	elif 'build' in mode:
 		if mode == 'build_movie_list':
 			from indexers.movies import Movies
@@ -141,9 +144,6 @@ def routing(sys):
 		elif mode == 'build_next_episode_manager':
 			from modules.episode_tools import build_next_episode_manager
 			return build_next_episode_manager(params)
-		elif mode == 'next_episode_manager_filter':
-			from modules.episode_tools import next_episode_manager_filter
-			return next_episode_manager_filter(params)
 		elif mode == 'build_tmdb_people':
 			from indexers.people import tmdb_people
 			return tmdb_people(params)

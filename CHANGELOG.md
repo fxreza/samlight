@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.10.2.1] - 2026-10-22
+
+- TV Shows Progress Manager: selecting the Show row now opens the All / Dropped / Not Dropped choice. Since 2.10.0 it did nothing.
+
 ## [2.10.1.1] - 2026-10-22
 
 - TV Shows Progress Manager: the Drop / Undrop text and the red [DROPPED] tag show again. 2.10.0 let skins show the plain show title or its clear logo instead.

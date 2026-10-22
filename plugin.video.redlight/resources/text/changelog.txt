@@ -1,3 +1,6 @@
+[COLOR red][B]Version 2.10.2[/B][/COLOR]
+- [B]TV Shows Progress Manager[/B]: selecting the Show row now opens the All / Dropped / Not Dropped choice. Since 2.10.0 it did nothing.
+
 [COLOR red][B]Version 2.10.1[/B][/COLOR]
 - [B]TV Shows Progress Manager[/B]: the Drop / Undrop text and the red [DROPPED] tag show again.
 - [B]TV Shows Progress Manager[/B]: long press a show for Drop TV Show or Undrop TV Show, above Browse Seasons. Selecting a show still drops or undrops it.
