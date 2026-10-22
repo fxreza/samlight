@@ -234,6 +234,37 @@ def _tmdb_sync_due(interval_hours):
 	try: return (time() - int(last)) >= (interval_hours * 3600)
 	except: return True
 
+class CloudBackupMonitor:
+	# Seconds without any remote or keyboard input before a due backup may start.
+	idle_needed = 600
+
+	def run(self, monitor):
+		kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Starting')
+		from xbmc import getGlobalIdleTime
+		from modules.cloud_backup import backup_due, run_backup
+		player = kodi_utils.kodi_player()
+		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
+		# Last of the daemons to start: keeps a multi-megabyte upload clear of the boot
+		# storm, and gives wifi time to associate on a cold start.
+		wait_for_abort(180)
+		while not monitor.abortRequested():
+			try:
+				if backup_due() and not kodi_utils.service_shutting_down(monitor):
+					# Once a day, but only while nobody is using Kodi: never during or right
+					# after playback, and never while browsing, so it cannot slow the menus.
+					if is_playing() or getGlobalIdleTime() < self.idle_needed:
+						wait_for_abort(60)
+						continue
+					status, message = run_backup(silent=True)
+					kodi_utils.logger('Red Light', 'Cloud Backup %s - %s' % (status, message))
+			except Exception as e: kodi_utils.logger('Red Light', 'Cloud Backup Failed: %s' % str(e))
+			# Tick often, but the stored last_run decides when work actually happens - so a
+			# device that was unplugged for days catches up instead of missing those days.
+			wait_for_abort(1800)
+		try: del player
+		except: pass
+		return kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Finished')
+
 class AddonXMLCheck:
 	def run(self):
 		kodi_utils.logger('Red Light', 'AddonXMLCheck Service Starting')
@@ -268,6 +299,7 @@ class RedLightMonitor(Monitor):
 		except Exception as e: kodi_utils.logger('AutoStart', str(e))
 		_start_daemon(lambda: ServiceExpiryAlerts().run(self))
 		_start_daemon(lambda: TMDbListSyncMonitor().run(self))
+		_start_daemon(lambda: CloudBackupMonitor().run(self))
 
 	def onNotification(self, sender, method, data):
 		if method in ('GUI.OnScreensaverActivated', 'System.OnSleep'):

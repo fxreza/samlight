@@ -1,6 +1,9 @@
+[COLOR red][B]Version 2.9.1[/B][/COLOR]
+- [B]Backup[/B]: Cloud Backup to GitHub is back, as it was in 2.8.1: once a day it uploads settings, menus, lists, favorites, watched movies and episodes, and resume points to your private GitHub repository. It now waits until Kodi has been idle for 10 minutes with nothing playing, so it never runs right after a video or while you browse. The Trakt, Simkl, MDBList and PunchPlay background syncs stay off.
+
 [COLOR red][B]Version 2.9.0[/B][/COLOR]
 - [B]Speed[/B]: faster menus after playback. Only the TMDb list sync still runs in the background. Trakt, Simkl, MDBList and PunchPlay no longer sync on a timer, because they all started at once after every video and slowed Kodi down.
-- [B]Backup[/B]: removed Cloud Backup (the daily upload to GitHub), its settings and its Tools menu entries. TMDb sync now keeps the lists. Import & Export still works.
+- [B]Backup[/B]: removed Cloud Backup (the daily upload to GitHub), its settings and its Tools menu entries.
 - [B]Speed[/B]: menus no longer re-check the databases each time they open. This now happens once per Kodi session.
 
 [COLOR red][B]Version 2.8.0[/B][/COLOR]

@@ -124,13 +124,16 @@ def _build_manifest(inventory):
 	}
 
 
-def _write_settings_zip(dest_path, inventory):
+def _write_settings_zip(dest_path, inventory, source_dir=None):
+	# source_dir lets the cloud backup zip consistent sqlite snapshots instead of the live
+	# (WAL mode) database files. Left as None this behaves exactly as it always has.
 	profile = kodi_utils.translate_path(kodi_utils.addon_profile())
 	manifest = _build_manifest(inventory)
 	with ZipFile(dest_path, 'w', ZIP_DEFLATED) as archive:
 		archive.writestr('manifest.json', json.dumps(manifest, indent=2, ensure_ascii=False))
 		for item in inventory['databases']:
-			archive.write(database_locations(item['key']), 'databases/%s' % item['filename'])
+			src = os.path.join(source_dir, item['filename']) if source_dir else database_locations(item['key'])
+			archive.write(src, 'databases/%s' % item['filename'])
 		images_path = os.path.join(profile, 'images')
 		if inventory['images'] and os.path.isdir(images_path):
 			for root, _dirs, files in os.walk(images_path):

@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.9.1.1] - 2026-10-22
+
+- Cloud Backup to GitHub is back, with its settings and Tools menu entries. It still runs once a day, but now only after Kodi has been idle for 10 minutes with nothing playing, so it never runs right after a video or while you browse. Back Up to Cloud Now still runs at once.
+- The Trakt, Simkl, MDBList and PunchPlay background syncs stay off.
+
 ## [2.9.0.1] - 2026-10-21
 
 - Faster menus after playback. Only the TMDb list sync still runs in the background. Trakt, Simkl, MDBList and PunchPlay no longer sync on a timer, because they all started at once after every video and slowed Kodi down.
