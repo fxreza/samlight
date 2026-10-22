@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.10.3.1] - 2026-10-22
+
+- Confirm and message windows (such as Restore from Cloud and Import Settings) could open with nothing highlighted, so their buttons could not be reached with a remote. When the text fits without scrolling, the default button is now highlighted.
+
 ## [2.10.2.1] - 2026-10-22
 
 - TV Shows Progress Manager: selecting the Show row now opens the All / Dropped / Not Dropped choice. Since 2.10.0 it did nothing.

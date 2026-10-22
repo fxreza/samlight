@@ -145,6 +145,12 @@ class Select(BaseDialog):
 		self.setProperty('heading', self.heading)
 		self.setProperty('narrow_window', self.narrow_window)
 
+def _scroll_bar_visible(dialog):
+	# Kodi hides a scroll bar whose text fits on one page, and a hidden control cannot
+	# take focus: focusing it anyway leaves nothing highlighted and the buttons unreachable.
+	try: return dialog.getControl(2070).isVisible()
+	except: return False
+
 def _handle_scroll_area_nav(dialog, action, ok_id=10, cancel_id=11):
 	if getattr(dialog, 'scroll_focus', 'false') != 'true': return False
 	try:
@@ -184,7 +190,7 @@ class Confirm(BaseDialog):
 			return self._BTN_CANCEL
 
 	def onInit(self):
-		focus_id = 2070 if self.scroll_focus == 'true' else self._focus_control(self.default_control)
+		focus_id = 2070 if self.scroll_focus == 'true' and _scroll_bar_visible(self) else self._focus_control(self.default_control)
 		self.setFocusId(focus_id)
 
 	def run(self):
@@ -238,7 +244,7 @@ class OK(BaseDialog):
 		self.set_properties()
 
 	def onInit(self):
-		self.setFocusId(2070 if self.scroll_focus == 'true' else 10)
+		self.setFocusId(2070 if self.scroll_focus == 'true' and _scroll_bar_visible(self) else 10)
 
 	def run(self):
 		self.doModal()

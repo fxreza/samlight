@@ -1,3 +1,6 @@
+[COLOR red][B]Version 2.10.3[/B][/COLOR]
+- [B]Dialogs[/B]: confirm and message windows (such as Restore from Cloud and Import Settings) could open with nothing highlighted, so their buttons could not be reached with a remote. When the text fits without scrolling, the default button is now highlighted.
+
 [COLOR red][B]Version 2.10.2[/B][/COLOR]
 - [B]TV Shows Progress Manager[/B]: selecting the Show row now opens the All / Dropped / Not Dropped choice. Since 2.10.0 it did nothing.
 
