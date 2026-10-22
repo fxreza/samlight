@@ -1,3 +1,8 @@
+[COLOR red][B]Version 2.10.0[/B][/COLOR]
+- [B]TV Shows Progress Manager[/B]: shows each show's poster and fanart, like the other TV show lists.
+- [B]TV Shows Progress Manager[/B]: new Show row at the top to list All shows, only Dropped shows, or only Not Dropped shows, with a count of the shows listed.
+- [B]TV Shows Progress Manager[/B]: long press a show for Browse Seasons. Selecting a show still drops or undrops it.
+
 [COLOR red][B]Version 2.9.1[/B][/COLOR]
 - [B]Backup[/B]: Cloud Backup to GitHub is back, as it was in 2.8.1: once a day it uploads settings, menus, lists, favorites, watched movies and episodes, and resume points to your private GitHub repository. It now waits until Kodi has been idle for 10 minutes with nothing playing, so it never runs right after a video or while you browse. The Trakt, Simkl, MDBList and PunchPlay background syncs stay off.
 

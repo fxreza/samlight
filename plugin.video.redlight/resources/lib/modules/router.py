@@ -140,7 +140,10 @@ def routing(sys):
 			return build_single_episode('episode.mdblist_next', params)
 		elif mode == 'build_next_episode_manager':
 			from modules.episode_tools import build_next_episode_manager
-			return build_next_episode_manager()
+			return build_next_episode_manager(params)
+		elif mode == 'next_episode_manager_filter':
+			from modules.episode_tools import next_episode_manager_filter
+			return next_episode_manager_filter(params)
 		elif mode == 'build_tmdb_people':
 			from indexers.people import tmdb_people
 			return tmdb_people(params)

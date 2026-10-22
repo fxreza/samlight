@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.10.0.1] - 2026-10-22
+
+- TV Shows Progress Manager shows each show's poster and fanart, like the other TV show lists.
+- New Show row at the top of the TV Shows Progress Manager: list All shows, only Dropped shows, or only Not Dropped shows. The row also shows how many shows are listed.
+- Long press a show in the TV Shows Progress Manager for Browse Seasons. Selecting a show still drops or undrops it.
+
 ## [2.9.1.1] - 2026-10-22
 
 - Cloud Backup to GitHub is back, with its settings and Tools menu entries. It still runs once a day, but now only after Kodi has been idle for 10 minutes with nothing playing, so it never runs right after a video or while you browse. Back Up to Cloud Now still runs at once.

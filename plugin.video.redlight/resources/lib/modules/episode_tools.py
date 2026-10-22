@@ -4,8 +4,8 @@ import json
 import random
 from datetime import date
 from modules.sources import Sources
-from modules.settings import date_offset, watched_indicators, ignore_articles, playback_key, max_threads
-from modules.metadata import episodes_meta, all_episodes_meta
+from modules.settings import date_offset, watched_indicators, ignore_articles, playback_key, max_threads, tmdb_api_key, mpaa_region
+from modules.metadata import tvshow_meta, episodes_meta, all_episodes_meta
 from modules.watched_status import get_watched_status_episode, get_next_episodes, get_hidden_progress_items, watched_info_episode, get_next
 from modules.utils import adjust_premiered_date, get_datetime, title_key, TaskPool
 from modules import kodi_utils
@@ -138,23 +138,39 @@ class EpisodeTools:
 		url_params[_key] = _key
 		return url_params
 
-def build_next_episode_manager():
+NEXTEP_MANAGER_FILTERS = (('all', 'All'), ('dropped', 'Dropped'), ('active', 'Not Dropped'))
+
+def build_next_episode_manager(params={}):
 	def _process(item):
 		try:
-			listitem = make_listitem()
 			tmdb_id, title = item['media_ids']['tmdb'], item['title']
-			if int(tmdb_id) in hidden_list: display, action = 'Undrop [B]%s[/B] [COLOR=red][DROPPED][/COLOR]' % title, 'undrop'
+			dropped = int(tmdb_id) in hidden_list
+			if show_filter == 'dropped' and not dropped: return
+			if show_filter == 'active' and dropped: return
+			listitem = make_listitem()
+			if dropped: display, action = 'Undrop [B]%s[/B] [COLOR=red][DROPPED][/COLOR]' % title, 'undrop'
 			else: display, action = 'Drop [B]%s[/B]' % title, 'drop'
 			url_params = {'mode': mode, 'action': action, 'media_type': 'shows', 'media_id': tmdb_id, 'section': 'dropped'}
 			url = build_url(url_params)
 			listitem.setLabel(display)
-			listitem.setArt({'poster': icon, 'fanart': addon_fanart, 'icon': icon})
+			# Show art from the saved show details, so the skin shows the poster like other TV lists.
+			try: meta = tvshow_meta('tmdb_id', str(tmdb_id), api_key, mpaa_region_value, current_date) or {}
+			except: meta = {}
+			poster, fanart = meta.get('poster') or icon, meta.get('fanart') or addon_fanart
+			listitem.setArt({'poster': poster, 'thumb': poster, 'icon': poster, 'fanart': fanart,
+							'landscape': meta.get('landscape') or fanart, 'clearlogo': meta.get('clearlogo') or ''})
 			info_tag = listitem.getVideoInfoTag(True)
-			info_tag.setPlot(' ')
+			info_tag.setMediaType('tvshow')
+			info_tag.setTitle(title)
+			info_tag.setPlot(meta.get('plot') or ' ')
+			# Selecting a show drops or undrops it, so seasons are one long press away, as in other lists.
+			listitem.addContextMenuItems([('[B]Browse Seasons[/B]', 'Container.Update(%s)' % build_url({'mode': 'build_season_list', 'tmdb_id': tmdb_id}))])
 			append({'listitem': (url, listitem, False), 'sort_title': title})
 		except: pass
 	handle = int(sys.argv[1])
 	make_listitem, build_url, addon_fanart = kodi_utils.make_listitem, kodi_utils.build_url, kodi_utils.get_addon_fanart()
+	api_key, mpaa_region_value, current_date = tmdb_api_key(), mpaa_region(), get_datetime()
+	show_filter = params.get('show_filter', 'all')
 	list_items = []
 	append = list_items.append
 	indicators = watched_indicators()
@@ -164,14 +180,30 @@ def build_next_episode_manager():
 	elif indicators == 2: icon, mode = kodi_utils.get_icon('simkl'), 'simkl.simkl_hide_unhide_progress_items'
 	elif indicators == 3: icon, mode = kodi_utils.get_icon('mdblist'), 'mdblist.mdblist_hide_unhide_progress_items'
 	else: icon, mode = kodi_utils.get_icon('trakt'), 'trakt.hide_unhide_progress_items'
-	threads = TaskPool().tasks(_process, show_list, min(len(show_list), max_threads()))
-	[i.join() for i in threads]
+	if show_list:
+		threads = TaskPool().tasks(_process, show_list, min(len(show_list), max_threads()))
+		[i.join() for i in threads]
 	item_list = sorted(list_items, key=lambda k: (title_key(k['sort_title'], ignore_articles())), reverse=False)
 	item_list = [i['listitem'] for i in item_list]
+	filter_item = make_listitem()
+	filter_item.setLabel('[B]Show: %s[/B]  [I](%s)[/I]' % (dict(NEXTEP_MANAGER_FILTERS).get(show_filter, 'All'), len(item_list)))
+	filter_icon = kodi_utils.get_icon('settings2')
+	filter_item.setArt({'poster': filter_icon, 'thumb': filter_icon, 'icon': filter_icon, 'fanart': addon_fanart})
+	filter_item.getVideoInfoTag(True).setPlot('Choose which shows to list: all of them, only dropped shows, or only shows that are not dropped.')
+	item_list.insert(0, (build_url({'mode': 'next_episode_manager_filter', 'show_filter': show_filter}), filter_item, False))
 	kodi_utils.add_items(handle, item_list)
-	kodi_utils.set_content(handle, kodi_utils.MENU_FOLDER_CONTENT)
+	kodi_utils.set_content(handle, 'tvshows')
 	kodi_utils.end_directory(handle, cacheToDisc=False)
-	kodi_utils.set_view_mode('view.main', kodi_utils.MENU_FOLDER_CONTENT, False)
+	kodi_utils.set_view_mode('view.tvshows', 'tvshows', False)
+
+def next_episode_manager_filter(params):
+	current = params.get('show_filter', 'all')
+	list_items = [{'line1': ('%s  [I](current)[/I]' % name) if key == current else name} for key, name in NEXTEP_MANAGER_FILTERS]
+	kwargs = {'items': json.dumps(list_items), 'heading': 'Show', 'narrow_window': 'true'}
+	choice = kodi_utils.select_dialog([key for key, name in NEXTEP_MANAGER_FILTERS], **kwargs)
+	if choice in (None, current): return
+	# Replace rather than stack, so Back leaves the manager instead of stepping through filters.
+	kodi_utils.execute_builtin('Container.Update(%s,replace)' % kodi_utils.build_url({'mode': 'build_next_episode_manager', 'show_filter': choice}))
 
 def single_last_watched_episodes(data):
 	seen = set()
