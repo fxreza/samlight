@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.9.0.1] - 2026-10-21
+
+- Faster menus after playback. Only the TMDb list sync still runs in the background. Trakt, Simkl, MDBList and PunchPlay no longer sync on a timer, because they all started at once after every video and slowed Kodi down.
+- Removed Cloud Backup (the daily upload to GitHub), its settings and its Tools menu entries. TMDb sync now keeps the lists. Import & Export still works. The stored GitHub token is deleted at the next settings sync.
+- Menus no longer re-check the databases each time they open. This now happens once per Kodi session, as in POV.
+
 ## [2.8.1.2] - 2026-10-18
 
 - Removed the link check and back-to-list change from 2.8.1.1; it did not stop the freezes. Same as 2.8.0.1, with a higher number so Kodi installs it.

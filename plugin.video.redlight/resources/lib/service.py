@@ -9,9 +9,6 @@ from modules import kodi_utils
 
 pause_services_prop = 'redlight.pause_services'
 current_skin_prop = 'redlight.current_skin'
-trakt_service_string = 'TraktMonitor Service Update %s - %s'
-trakt_success_line_dict = {'success': 'Trakt Update Performed', 'no account': '(Unauthorised) Trakt Update Performed'}
-update_string = 'Next Update in %s minutes...'
 
 def _start_daemon(target):
 	Thread(target=target, daemon=True).start()
@@ -130,148 +127,6 @@ class CustomWindowsPrepare:
 		except: pass
 		return kodi_utils.logger('Red Light', 'CustomWindowsPrepare Service Finished')
 
-class TraktMonitor:
-	def run(self, monitor):
-		kodi_utils.logger('Red Light', 'TraktMonitor Service Starting')
-		from apis.trakt_api import trakt_sync_activities
-		from modules.settings import trakt_user_active, trakt_sync_interval
-		player = kodi_utils.kodi_player()
-		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
-		wait_for_abort(45)
-		while not monitor.abortRequested():
-			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
-			wait_time = 1800
-			try:
-				from caches.settings_cache import sync_kodi_profile_context
-				sync_kodi_profile_context()
-				sync_interval, wait_time = trakt_sync_interval()
-				next_update_string = update_string % sync_interval
-				if trakt_user_active(): status = trakt_sync_activities()
-				else: status = 'no_auth'
-				if status == 'failed': kodi_utils.logger('Red Light', trakt_service_string % ('Failed. Error from Trakt', next_update_string))
-				elif status == 'no_auth': kodi_utils.logger('Red Light', trakt_service_string % ('Not Run. No Current Trakt Account', next_update_string))
-				else:
-					if status in ('success', 'no account'):
-						kodi_utils.logger('Red Light', trakt_service_string % ('Success. %s' % trakt_success_line_dict[status], next_update_string))
-					else:
-						kodi_utils.logger('Red Light', trakt_service_string % ('Success. No Changes Needed', next_update_string))# 'not needed'
-					if status in ('success', 'not needed'):
-						kodi_utils.mark_boot_trakt_sync_ready()
-					if status == 'success' and not kodi_utils.service_shutting_down(monitor):
-						from modules.settings import provider_sync_refresh_widgets
-						if provider_sync_refresh_widgets(1):
-							try:
-								if not kodi_utils.playback_widget_refresh_recent(): kodi_utils.run_plugin({'mode': 'kodi_refresh'})
-							except Exception as exc:
-								kodi_utils.logger('Red Light', 'Trakt widget refresh skipped: %s' % exc)
-			except Exception as e: kodi_utils.logger('Red Light', trakt_service_string % ('Failed', 'The following Error Occured: %s' % str(e)))
-			wait_for_abort(wait_time)
-		try: del player
-		except: pass
-		return kodi_utils.logger('Red Light', 'TraktMonitor Service Finished')
-
-class SimklMonitor:
-	def run(self, monitor):
-		kodi_utils.logger('Red Light', 'SimklMonitor Service Starting')
-		from apis.simkl_api import simkl_sync_activities
-		from modules.settings import simkl_user_active, simkl_sync_interval
-		player = kodi_utils.kodi_player()
-		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
-		wait_for_abort(45)
-		while not monitor.abortRequested():
-			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
-			wait_time = 1800
-			try:
-				from caches.settings_cache import sync_kodi_profile_context
-				sync_kodi_profile_context()
-				sync_interval, wait_time = simkl_sync_interval()
-				next_update_string = 'Simkl Sync finished - Next Sync in %s minutes' % sync_interval
-				if simkl_user_active(): status = simkl_sync_activities()
-				else: status = 'no_auth'
-				if status == 'failed': kodi_utils.logger('Red Light', 'Simkl Sync Failed')
-				elif status == 'no_auth': kodi_utils.logger('Red Light', 'Simkl Sync Not Run - No Account')
-				else: kodi_utils.logger('Red Light', 'Simkl Sync %s - %s' % ('OK' if status == 'success' else 'No Changes', next_update_string))
-				if status == 'success' and not kodi_utils.service_shutting_down(monitor):
-					from modules.settings import provider_sync_refresh_widgets
-					if provider_sync_refresh_widgets(2):
-						try:
-							if not kodi_utils.playback_widget_refresh_recent(): kodi_utils.run_plugin({'mode': 'kodi_refresh'})
-						except Exception as exc:
-							kodi_utils.logger('Red Light', 'Simkl widget refresh skipped: %s' % exc)
-			except Exception as e: kodi_utils.logger('Red Light', 'Simkl Sync Failed: %s' % str(e))
-			wait_for_abort(wait_time)
-		try: del player
-		except: pass
-		return kodi_utils.logger('Red Light', 'SimklMonitor Service Finished')
-
-class MdblistMonitor:
-	def run(self, monitor):
-		kodi_utils.logger('Red Light', 'MDBListMonitor Service Starting')
-		from apis.mdblist_api import mdblist_sync_activities
-		from modules.settings import mdblist_user_active, mdblist_sync_interval
-		player = kodi_utils.kodi_player()
-		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
-		wait_for_abort(60)
-		while not monitor.abortRequested():
-			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
-			wait_time = 1800
-			try:
-				from caches.settings_cache import sync_kodi_profile_context
-				sync_kodi_profile_context()
-				sync_interval, wait_time = mdblist_sync_interval()
-				next_update_string = 'MDBList Sync finished - Next Sync in %s minutes' % sync_interval
-				if mdblist_user_active(): status = mdblist_sync_activities()
-				else: status = 'no_auth'
-				if status == 'failed': kodi_utils.logger('Red Light', 'MDBList Sync Failed')
-				elif status == 'no_auth': kodi_utils.logger('Red Light', 'MDBList Sync Not Run - No Account')
-				else: kodi_utils.logger('Red Light', 'MDBList Sync %s - %s' % ('OK' if status == 'success' else 'No Changes', next_update_string))
-				if status == 'success' and not kodi_utils.service_shutting_down(monitor):
-					from modules.settings import provider_sync_refresh_widgets
-					if provider_sync_refresh_widgets(3):
-						try:
-							if not kodi_utils.playback_widget_refresh_recent(): kodi_utils.run_plugin({'mode': 'kodi_refresh'})
-						except Exception as exc:
-							kodi_utils.logger('Red Light', 'MDBList widget refresh skipped: %s' % exc)
-			except Exception as e: kodi_utils.logger('Red Light', 'MDBList Sync Failed: %s' % str(e))
-			wait_for_abort(wait_time)
-		try: del player
-		except: pass
-		return kodi_utils.logger('Red Light', 'MDBListMonitor Service Finished')
-
-class PunchPlayMonitor:
-	def run(self, monitor):
-		kodi_utils.logger('Red Light', 'PunchPlayMonitor Service Starting')
-		from apis.punchplay_api import punchplay_sync_activities
-		from modules.settings import punchplay_user_active, punchplay_sync_interval
-		player = kodi_utils.kodi_player()
-		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
-		wait_for_abort(55)
-		while not monitor.abortRequested():
-			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
-			wait_time = 1800
-			try:
-				from caches.settings_cache import sync_kodi_profile_context
-				sync_kodi_profile_context()
-				sync_interval, wait_time = punchplay_sync_interval()
-				next_update_string = 'PunchPlay Sync finished - Next Sync in %s minutes' % sync_interval
-				if punchplay_user_active(): status = punchplay_sync_activities()
-				else: status = 'no_auth'
-				if status == 'failed': kodi_utils.logger('Red Light', 'PunchPlay Sync Failed')
-				elif status == 'no_auth': kodi_utils.logger('Red Light', 'PunchPlay Sync Not Run - No Account')
-				else: kodi_utils.logger('Red Light', 'PunchPlay Sync %s - %s' % ('OK' if status == 'success' else 'No Changes', next_update_string))
-				if status == 'success' and not kodi_utils.service_shutting_down(monitor):
-					from modules.settings import provider_sync_refresh_widgets
-					if provider_sync_refresh_widgets(4):
-						try:
-							if not kodi_utils.playback_widget_refresh_recent(): kodi_utils.run_plugin({'mode': 'kodi_refresh'})
-						except Exception as exc:
-							kodi_utils.logger('Red Light', 'PunchPlay widget refresh skipped: %s' % exc)
-			except Exception as e: kodi_utils.logger('Red Light', 'PunchPlay Sync Failed: %s' % str(e))
-			wait_for_abort(wait_time)
-		try: del player
-		except: pass
-		return kodi_utils.logger('Red Light', 'PunchPlayMonitor Service Finished')
-
 class WidgetRefresher:
 	def run(self, monitor):
 		kodi_utils.logger('Red Light', 'WidgetRefresher Service Starting')
@@ -379,29 +234,6 @@ def _tmdb_sync_due(interval_hours):
 	try: return (time() - int(last)) >= (interval_hours * 3600)
 	except: return True
 
-class CloudBackupMonitor:
-	def run(self, monitor):
-		kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Starting')
-		from modules.cloud_backup import backup_due, run_backup
-		player = kodi_utils.kodi_player()
-		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
-		# Last of the daemons to start: keeps a multi-megabyte upload clear of the boot
-		# storm, and gives wifi time to associate on a cold start.
-		wait_for_abort(180)
-		while not monitor.abortRequested():
-			while is_playing() or kodi_utils.get_property(pause_services_prop) == 'true': wait_for_abort(10)
-			try:
-				if backup_due() and not kodi_utils.service_shutting_down(monitor):
-					status, message = run_backup(silent=True)
-					kodi_utils.logger('Red Light', 'Cloud Backup %s - %s' % (status, message))
-			except Exception as e: kodi_utils.logger('Red Light', 'Cloud Backup Failed: %s' % str(e))
-			# Tick often, but the stored last_run decides when work actually happens - so a
-			# device that was unplugged for days catches up instead of missing those days.
-			wait_for_abort(1800)
-		try: del player
-		except: pass
-		return kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Finished')
-
 class AddonXMLCheck:
 	def run(self):
 		kodi_utils.logger('Red Light', 'AddonXMLCheck Service Starting')
@@ -429,19 +261,13 @@ class RedLightMonitor(Monitor):
 				_start_daemon(lambda: BootstrapSettings().run(self))
 		except Exception as e: kodi_utils.logger('BootstrapSettings', str(e))
 		start_custom_windows_prepare(self)
-		# Only start a provider's loop when that provider is switched on. A disabled
-		# provider costs nothing at all: no thread, no timer, no requests.
-		from modules.settings import provider_enabled
-		if provider_enabled('trakt'): _start_daemon(lambda: TraktMonitor().run(self))
-		if provider_enabled('simkl'): _start_daemon(lambda: SimklMonitor().run(self))
-		if provider_enabled('mdblist'): _start_daemon(lambda: MdblistMonitor().run(self))
-		if provider_enabled('punchplay'): _start_daemon(lambda: PunchPlayMonitor().run(self))
+		# TMDb is the only background sync. Trakt, Simkl, MDBList and PunchPlay no longer
+		# run on a timer: they woke up together after every playback and slowed the menus.
 		_start_daemon(lambda: WidgetRefresher().run(self))
 		try: AutoStart().run(self)
 		except Exception as e: kodi_utils.logger('AutoStart', str(e))
 		_start_daemon(lambda: ServiceExpiryAlerts().run(self))
 		_start_daemon(lambda: TMDbListSyncMonitor().run(self))
-		_start_daemon(lambda: CloudBackupMonitor().run(self))
 
 	def onNotification(self, sender, method, data):
 		if method in ('GUI.OnScreensaverActivated', 'System.OnSleep'):

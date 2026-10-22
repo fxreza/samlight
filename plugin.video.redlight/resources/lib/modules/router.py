@@ -18,9 +18,14 @@ def sys_exit_check(mode='navigator.main'):
 def prepare_directory_listing(mode):
 	from caches.settings_cache import is_directory_listing_mode
 	if not is_directory_listing_mode(mode): return
+	# Once per Kodi session and profile, as POV does, not on every menu open.
+	profile = get_property('redlight.addon_profile')
+	if profile and get_property('redlight.listing_dbs_ready') == profile: return
 	try:
 		from caches.base_cache import ensure_listing_databases_ready
 		ensure_listing_databases_ready()
+		if profile and get_property('redlight.settings_db_synced') == 'true':
+			kodi_utils.set_property('redlight.listing_dbs_ready', profile)
 	except Exception as e:
 		kodi_utils.logger('routing', 'prepare listing: %s' % e)
 
@@ -351,9 +356,6 @@ def routing(sys):
 	elif 'settings_backup.' in mode:
 		from modules import settings_backup
 		return getattr(settings_backup, mode.split('.', 1)[1])(params)
-	elif 'cloud_backup.' in mode:
-		from modules import cloud_backup
-		return getattr(cloud_backup, mode.split('.', 1)[1])(params)
 	elif 'kodi_favorites.' in mode:
 		from modules import kodi_favorites_backup
 		return getattr(kodi_favorites_backup, mode.split('.', 1)[1])(params)
