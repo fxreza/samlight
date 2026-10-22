@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.10.4.1] - 2026-10-22
+
+- Restore from Cloud, Import Settings and Kodi favourites import and export failed on Android devices such as the Fire TV with "Permission denied" (Errno 13). They now copy only the file contents, which Android allows.
+
 ## [2.10.3.1] - 2026-10-22
 
 - Confirm and message windows (such as Restore from Cloud and Import Settings) could open with nothing highlighted, so their buttons could not be reached with a remote. When the text fits without scrolling, the default button is now highlighted.

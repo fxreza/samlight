@@ -99,7 +99,7 @@ def export_favorites(params):
 		return
 	try:
 		kodi_utils.make_directory(folder)
-		shutil.copy2(src, dest)
+		shutil.copyfile(src, dest)
 	except Exception as e:
 		return kodi_utils.ok_dialog(heading='Export failed', text=str(e))
 	summary = 'Exported %s Kodi favorite(s) to %s' % (count, filename)
@@ -171,8 +171,8 @@ def import_favorites(params):
 		else:
 			if os.path.isfile(dest):
 				backup = dest + '.redlight.bak'
-				shutil.copy2(dest, backup)
-			shutil.copy2(path, dest)
+				shutil.copyfile(dest, backup)
+			shutil.copyfile(path, dest)
 			summary = 'Import complete — %s favorite(s) imported (replace)' % file_count
 	except Exception as e:
 		return kodi_utils.ok_dialog(heading='Import failed', text=str(e))

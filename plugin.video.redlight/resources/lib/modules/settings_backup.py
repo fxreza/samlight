@@ -217,7 +217,8 @@ def _apply_settings_import(zip_path, inventory):
 			kodi_utils.make_directory(os.path.dirname(dest))
 			if os.path.isfile(dest):
 				kodi_utils.delete_file(dest)
-			shutil.copy2(src, dest)
+			# Contents only: copy2 also copies security labels, which Android refuses (Errno 13).
+			shutil.copyfile(src, dest)
 			make_database(db_key)
 			copied_dbs.append(item['filename'])
 			imported_db_keys.append(db_key)
@@ -255,7 +256,7 @@ def _import_images(src_root, dest_root):
 			rel = os.path.relpath(src, src_root)
 			dest = os.path.join(dest_root, rel)
 			kodi_utils.make_directory(os.path.dirname(dest))
-			shutil.copy2(src, dest)
+			shutil.copyfile(src, dest)
 			count += 1
 	return count
 
