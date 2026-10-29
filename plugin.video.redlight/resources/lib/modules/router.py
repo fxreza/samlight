@@ -362,6 +362,9 @@ def routing(sys):
 	elif 'cloud_backup.' in mode:
 		from modules import cloud_backup
 		return getattr(cloud_backup, mode.split('.', 1)[1])(params)
+	elif 'watched_sync.' in mode:
+		from modules import watched_sync
+		return getattr(watched_sync, mode.split('.', 1)[1])(params)
 	elif 'kodi_favorites.' in mode:
 		from modules import kodi_favorites_backup
 		return getattr(kodi_favorites_backup, mode.split('.', 1)[1])(params)

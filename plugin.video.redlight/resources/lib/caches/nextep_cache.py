@@ -17,7 +17,7 @@ _CACHE_HOURS = 168  # safety TTL; activity token usually invalidates sooner
 
 def _settings_fingerprint(watched_indicators, mdblist_menu_next, is_anime_list, is_external, sort_key=None):
 	from modules import settings
-	from modules.utils import get_datetime
+	from modules.utils import get_datetime, release_day_token
 	resolved_sort = sort_key if sort_key in ('last_played', 'first_aired', 'name') else settings.nextep_sort_key()
 	calendar_day = get_datetime(string=True)
 	parts = (
@@ -45,6 +45,7 @@ def _settings_fingerprint(watched_indicators, mdblist_menu_next, is_anime_list, 
 		settings.playback_key(),
 		settings.ignore_articles(),
 		calendar_day,
+		release_day_token(),
 		5,  # cache schema: episode still on landscape (LandscapeInfo widgets)
 	)
 	return '_'.join(str(p) for p in parts)

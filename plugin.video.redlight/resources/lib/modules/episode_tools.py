@@ -7,7 +7,7 @@ from modules.sources import Sources
 from modules.settings import date_offset, watched_indicators, ignore_articles, playback_key, max_threads, tmdb_api_key, mpaa_region
 from modules.metadata import tvshow_meta, episodes_meta, all_episodes_meta
 from modules.watched_status import get_watched_status_episode, get_next_episodes, get_hidden_progress_items, watched_info_episode, get_next
-from modules.utils import adjust_premiered_date, get_datetime, title_key, TaskPool
+from modules.utils import adjust_premiered_date, episode_aired, get_datetime, title_key, TaskPool
 from modules import kodi_utils
 # logger = kodi_utils.logger
 
@@ -48,7 +48,7 @@ class EpisodeTools:
 				return 'no_next_episode'
 			adjust_hours, current_date = date_offset(), get_datetime()
 			episode_date, premiered = adjust_premiered_date(ep_data['premiered'], adjust_hours)
-			if not episode_date or current_date < episode_date:
+			if not episode_aired(ep_data['premiered']):
 				_log_nextep_skip(title, season, episode, 'episode not aired yet')
 				return 'no_next_episode'
 			custom_title = self.meta_get('custom_title', None)
@@ -71,7 +71,7 @@ class EpisodeTools:
 			tmdb_id = self.meta_get('tmdb_id')
 			tmdb_key = str(tmdb_id)
 			ep_meta = all_episodes_meta(self.meta)
-			episodes_data = [i for i in ep_meta if i['premiered'] and adjust_premiered_date(i['premiered'], adjust_hours)[0] <= current_date]
+			episodes_data = [i for i in ep_meta if episode_aired(i['premiered'])]
 			if continual:
 				episode_list = []
 				try:

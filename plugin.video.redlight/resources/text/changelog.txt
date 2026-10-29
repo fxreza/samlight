@@ -1,3 +1,7 @@
+[COLOR red][B]Version 2.11.0[/B][/COLOR]
+- [B]Watched Sync[/B]: watched marks for movies and episodes, and dropped TV shows, are now shared between devices through the Cloud Backup GitHub repository, one file for all devices. Your own marks go out about a minute after the last one; other devices' marks come in at start-up and every hour, never during playback. Newest change wins. Resume points stay on each device.
+- [B]Settings[/B]: General > Cloud Backup > Sync Watched Status Between Devices (on by default, uses the Cloud Backup token and repository), Pull Every (minutes), Last Sync. Tools > Import & Export > Sync Watched Status Now.
+
 [COLOR red][B]Version 2.10.4[/B][/COLOR]
 - [B]Backup[/B]: Restore from Cloud, Import Settings and Kodi favourites import and export failed on Android devices such as the Fire TV with "Permission denied" (Errno 13). They now copy only the file contents, which Android allows.
 

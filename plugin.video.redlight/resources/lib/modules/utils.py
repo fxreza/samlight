@@ -2,6 +2,7 @@
 import re
 import sys
 import time
+import calendar
 import random
 import inspect
 import _strptime
@@ -11,7 +12,7 @@ from queue import SimpleQueue
 from contextlib import nullcontext
 from threading import Thread, activeCount
 from importlib import import_module
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from caches.base_cache import open_db
 from modules.settings import max_threads
 from modules.kodi_utils import sleep, logger
@@ -168,6 +169,30 @@ def adjust_premiered_date(orig_date, adjust_hours):
 	adjusted_datetime = datetime_object + timedelta(hours=adjust_hours)
 	adjusted_string = adjusted_datetime.strftime('%Y-%m-%d')
 	return adjusted_datetime.date(), adjusted_string
+
+def _us_eastern_utc_offset(d):
+	# US Eastern is UTC-4 from the second Sunday in March to the first Sunday in November, else UTC-5.
+	march, nov = date(d.year, 3, 8), date(d.year, 11, 1)
+	dst_start, dst_end = march + timedelta(days=(6 - march.weekday()) % 7), nov + timedelta(days=(6 - nov.weekday()) % 7)
+	return -4 if dst_start <= d < dst_end else -5
+
+def episode_release_timestamp(orig_date):
+	"""TMDb gives an air date only: treat the episode as released at 20:00 US Eastern on that date."""
+	try: air_date = datetime_workaround(orig_date, '%Y-%m-%d').date()
+	except: return None
+	release = datetime(air_date.year, air_date.month, air_date.day, 20) - timedelta(hours=_us_eastern_utc_offset(air_date))
+	return calendar.timegm(release.timetuple())
+
+def episode_aired(orig_date):
+	if not orig_date: return False
+	release = episode_release_timestamp(orig_date)
+	return release is not None and time.time() >= release
+
+def release_day_token():
+	"""US Eastern date of the latest 20:00 release time passed; changes once a day, at release time."""
+	now = datetime.now(timezone.utc).replace(tzinfo=None)
+	eastern = now + timedelta(hours=_us_eastern_utc_offset((now - timedelta(hours=5)).date()))
+	return (eastern - timedelta(hours=20)).strftime('%Y-%m-%d')
 
 def parse_calendar_air_datetime(service_first_aired):
 	"""Parse ISO calendar timestamp; return None for date-only / invalid."""

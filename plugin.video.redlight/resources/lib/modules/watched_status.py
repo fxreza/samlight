@@ -8,7 +8,7 @@ from apis.punchplay_api import punchplay_watched_status_mark, punchplay_progress
 from caches.base_cache import connect_database, database
 from caches.trakt_cache import clear_trakt_collection_watchlist_data
 from modules.kodi_utils import kodi_progress_background, sleep, get_video_database_path, notification, kodi_refresh, logger, translate_path, get_property, set_property, clear_property
-from modules.utils import get_datetime, adjust_premiered_date, sort_for_article, TaskPool
+from modules.utils import get_datetime, adjust_premiered_date, episode_aired, sort_for_article, TaskPool
 from modules import metadata, settings
 # from modules.kodi_utils import logger
 
@@ -76,6 +76,7 @@ def hide_unhide_progress_items(params):
 	else: current_items.remove(media_id)
 	watched_db = get_database()
 	watched_info = watched_db.execute('INSERT OR REPLACE INTO watched_status VALUES (?, ?, ?)', ('hidden_progress_items', 'hidden', repr(current_items),))
+	_sync_record('record_drop', media_id, action == 'drop')
 	if refresh: kodi_refresh()
 
 def drop_undrop_tvshow(params):
@@ -106,6 +107,13 @@ def drop_undrop_tvshow(params):
 		return notification('TV Show Dropped' if action == 'drop' else 'TV Show Undropped', 3000)
 	from apis.trakt_api import hide_unhide_progress_items as trakt_hide_unhide_progress_items
 	return trakt_hide_unhide_progress_items(data)
+
+def _sync_record(function, *args):
+	"""Queue a local-provider change for the between-devices watched sync. Never raises."""
+	try:
+		from modules import watched_sync
+		getattr(watched_sync, function)(*args)
+	except Exception: pass
 
 def get_last_played_value(watched_indicators):
 	if watched_indicators == 0: return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -149,12 +157,7 @@ def count_aired_episodes(meta, season=None, current_date=None, adjust_hours=None
 		for ep in eps:
 			premiered = ep.get('premiered')
 			if not premiered: continue
-			try:
-				ep_date = adjust_premiered_date(premiered, adjust_hours)[0]
-			except Exception:
-				continue
-			if ep_date and ep_date <= current_date:
-				count += 1
+			if episode_aired(premiered): count += 1
 	return count
 
 def progress_aired_eps(meta):
@@ -603,8 +606,7 @@ def mark_tvshow(params):
 			ep_number = ep['episode']
 			display = '%s - S%.2dE%.2d' % (title, int(season_number), int(ep_number))
 			progress_backround.update(int(float(count)/float(total)*100), '[B]Please Wait..[/B]', display)
-			episode_date, premiered = adjust_premiered_date(ep['premiered'], settings.date_offset())
-			if episode_date and current_date < episode_date: continue
+			if ep['premiered'] and not episode_aired(ep['premiered']): continue
 			insert_append(make_batch_insert(action, 'episode', tmdb_id, season_number, ep_number, last_played, title))
 	_arm_provider_list_sync_skip(watched_indicators)
 	batch_watched_status_mark(watched_indicators, insert_list, action)
@@ -643,8 +645,7 @@ def mark_season(params):
 		season_number = item['season']
 		ep_number = item['episode']
 		display = '%s - S%.2dE%.2d' % (title, season_number, ep_number)
-		episode_date, premiered = adjust_premiered_date(item['premiered'], settings.date_offset())
-		if episode_date and current_date < episode_date: continue
+		if item['premiered'] and not episode_aired(item['premiered']): continue
 		progress_backround.update(int(float(count) / float(len(ep_data)) * 100), '[B]Please Wait..[/B]', display)
 		insert_append(make_batch_insert(action, 'episode', tmdb_id, season_number, ep_number, last_played, title))
 	_arm_provider_list_sync_skip(watched_indicators)
@@ -716,6 +717,7 @@ def watched_status_mark(watched_indicators, media_type='', media_id='', action='
 			dbcon.execute('INSERT OR REPLACE INTO watched VALUES (?, ?, ?, ?, ?, ?)', (media_type, media_id, season, episode, last_played, title))
 		elif action == 'mark_as_unwatched':
 			dbcon.execute('DELETE FROM watched WHERE (db_type = ? and media_id = ? and season = ? and episode = ?)', (media_type, media_id, season, episode))
+		if watched_indicators == 0: _sync_record('record_mark', media_type, media_id, action, season, episode, title)
 		erase_bookmark(media_type, media_id, season, episode)
 		if media_type == 'episode': _invalidate_nextep_list_cache()
 		# if media_type == 'episode': clear_cache_watched_tvshow_status()
@@ -728,6 +730,7 @@ def batch_watched_status_mark(watched_indicators, insert_list, action):
 			dbcon.executemany('INSERT OR IGNORE INTO watched VALUES (?, ?, ?, ?, ?, ?)', insert_list)
 		elif action == 'mark_as_unwatched':
 			dbcon.executemany('DELETE FROM watched WHERE (db_type = ? and media_id = ? and season = ? and episode = ?)', insert_list)
+		if watched_indicators == 0: _sync_record('record_batch', insert_list, action)
 		batch_erase_bookmark(watched_indicators, insert_list, action)
 		_invalidate_nextep_list_cache()
 		# clear_cache_watched_tvshow_status()

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.0.1] - 2026-10-29
+
+- Watched status now follows you between devices. Watched marks for movies and episodes, and dropped TV shows, are shared through the Cloud Backup GitHub repository in one file for all devices, so what you watch on the Mac shows as watched on the Fire Stick and the other way round. Your own marks are sent about a minute after the last one; other devices' marks are pulled at start-up and every hour, never while a video plays or in the 90 seconds after it stops. When both devices change the same title, the newest change wins. The first sync takes the union of every device's history.
+- Resume points stay on each device on purpose: they change on every stop and would keep the shared file churning.
+- New Settings > General > Cloud Backup rows: Sync Watched Status Between Devices (on by default, needs the Cloud Backup token and repository), Pull Every (minutes), Last Sync. Tools > Import & Export > Sync Watched Status Now runs it at once.
+- Only with Red Light as the Watched Status Provider. Trakt, Simkl, MDBList and PunchPlay already share through their own servers.
+
 ## [2.10.4.1] - 2026-10-22
 
 - Restore from Cloud, Import Settings and Kodi favourites import and export failed on Android devices such as the Fire TV with "Permission denied" (Errno 13). They now copy only the file contents, which Android allows.

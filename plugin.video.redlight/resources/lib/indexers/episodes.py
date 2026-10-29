@@ -2,7 +2,7 @@
 import sys
 from modules import kodi_utils, settings, watched_status as ws
 from modules.metadata import tvshow_meta, episodes_meta, all_episodes_meta
-from modules.utils import jsondate_to_datetime, adjust_premiered_date, calendar_service_local_date, make_day, get_datetime, get_current_timestamp, title_key, date_difference, TaskPool
+from modules.utils import jsondate_to_datetime, adjust_premiered_date, episode_aired, calendar_service_local_date, make_day, get_datetime, get_current_timestamp, title_key, date_difference, TaskPool
 from datetime import timedelta
 # logger = kodi_utils.logger
 
@@ -140,10 +140,8 @@ def build_episode_list(params):
 					item['duration'] = duration
 				str_episode_zfill2 = str(episode).zfill(2)
 				seas_ep = '%sx%s. ' % (season, str_episode_zfill2)
-				if not episode_date or current_date < episode_date:
-					display, unaired = '[COLOR red][I]%s%s[/I][/COLOR]' % (seas_ep, ep_name), True
-					item['title'] = display
-				else: display, unaired = '%s%s' % (seas_ep, ep_name), False
+				if not episode_aired(item_get('premiered')): continue
+				display, unaired = '%s%s' % (seas_ep, ep_name), False
 				extras_params = build_url({'mode': 'extras_menu_choice', 'tmdb_id': tmdb_id, 'media_type': 'episode', 'is_external': is_external})
 				options_params = build_url({'mode': 'options_menu_choice', 'content': 'episode', 'tmdb_id': tmdb_id, 'poster': show_poster, 'is_external': is_external,
 											'season': season, 'episode': episode, 'episode_id': episode_id})
@@ -317,13 +315,13 @@ def build_single_episode(list_type, params={}):
 				episode_date, premiered = adjust_premiered_date(item_get('premiered'), adjust_hours)
 			episode_type = item_get('episode_type') or ''
 			episode_id = item_get('episode_id') or None
-			if not episode_date or current_date < episode_date:
+			if list_type_starts_with('next_'): unaired = not episode_aired(item_get('premiered'))
+			else: unaired = not episode_date or current_date < episode_date
+			if unaired:
 				if list_type_starts_with('next_'):
 					if not episode_date: return
 					if not include_unaired: return
 					if not date_difference(current_date, episode_date, 7): return
-				unaired = True
-			else: unaired = False
 			orig_title, rootname, trailer, genre = meta_get('original_title'), meta_get('rootname'), str(meta_get('trailer')), meta_get('genre')
 			mpaa, tvshow_plot, studio, show_status = meta_get('mpaa'), meta_get('plot'), meta_get('studio'), meta_get('status')
 			cast = meta_get('short_cast', []) or meta_get('cast', []) or []

@@ -1546,6 +1546,10 @@ def default_settings():
 {'setting_id': 'cloud_backup.last_run', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'cloud_backup.last_status', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 {'setting_id': 'cloud_backup.last_error_notified', 'setting_type': 'string', 'setting_default': 'empty_setting'},
+#==================== Watched Sync (shares the Cloud Backup token and repository)
+{'setting_id': 'watched_sync.enabled', 'setting_type': 'boolean', 'setting_default': 'true'},
+{'setting_id': 'watched_sync.interval_minutes', 'setting_type': 'action', 'setting_default': '60', 'min_value': '5', 'max_value': '1440'},
+{'setting_id': 'watched_sync.last_status', 'setting_type': 'string', 'setting_default': 'empty_setting'},
 
 
 #================================================================================#

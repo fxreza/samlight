@@ -265,6 +265,41 @@ class CloudBackupMonitor:
 		except: pass
 		return kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Finished')
 
+class WatchedSyncMonitor:
+	# Seconds without remote or keyboard input before an hourly pull may run. A push of
+	# this device's own marks does not wait for idle once the pending file is old enough.
+	idle_needed = 20
+	# Seconds after playback stops before any sync: the widgets rebuild first.
+	after_playback = 90
+
+	def run(self, monitor):
+		kodi_utils.logger('Red Light', 'WatchedSyncMonitor Service Starting')
+		from xbmc import getGlobalIdleTime
+		from modules import watched_sync
+		player = kodi_utils.kodi_player()
+		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
+		# After the boot storm, but before the daily backup: the start-up pull is what
+		# brings the other device's marks over.
+		wait_for_abort(150)
+		last_playing = 0
+		while not monitor.abortRequested():
+			try:
+				if is_playing() or kodi_utils.get_property(pause_services_prop) == 'true':
+					last_playing = time()
+				elif not kodi_utils.service_shutting_down(monitor) and time() - last_playing >= self.after_playback:
+					reason = watched_sync.sync_due()
+					if reason:
+						forced = (watched_sync.pending_age() or 0) >= watched_sync.FORCE_AFTER_SECONDS
+						if forced or getGlobalIdleTime() >= self.idle_needed:
+							status, message = watched_sync.run_sync(silent=True, reason=reason)
+							kodi_utils.logger('Red Light', 'Watched Sync %s - %s' % (status, message))
+			except Exception as e: kodi_utils.logger('Red Light', 'Watched Sync Failed: %s' % str(e))
+			# A cheap tick: the pending file's age and the stored last run decide when work happens.
+			wait_for_abort(20)
+		try: del player
+		except: pass
+		return kodi_utils.logger('Red Light', 'WatchedSyncMonitor Service Finished')
+
 class AddonXMLCheck:
 	def run(self):
 		kodi_utils.logger('Red Light', 'AddonXMLCheck Service Starting')
@@ -299,6 +334,7 @@ class RedLightMonitor(Monitor):
 		except Exception as e: kodi_utils.logger('AutoStart', str(e))
 		_start_daemon(lambda: ServiceExpiryAlerts().run(self))
 		_start_daemon(lambda: TMDbListSyncMonitor().run(self))
+		_start_daemon(lambda: WatchedSyncMonitor().run(self))
 		_start_daemon(lambda: CloudBackupMonitor().run(self))
 
 	def onNotification(self, sender, method, data):

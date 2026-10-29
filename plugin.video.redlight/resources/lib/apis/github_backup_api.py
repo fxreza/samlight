@@ -9,6 +9,7 @@ Every function returns (True, payload) or (False, {'code': ..., 'message': ...})
 Nothing here raises into the service thread and nothing here opens a dialog.
 """
 
+import base64
 import json
 import os
 import requests
@@ -187,3 +188,46 @@ def download_asset(cfg, asset, dest_path):
 	except Exception as e:
 		return _fail('error', 'Download failed: %s' % e)
 	return True, dest_path
+
+
+# ---------------------------------------------------------------- repository contents
+# Small text files committed to the repository, such as the shared watched status.
+# Unlike the backups above these are meant to live in git history.
+
+def _contents_url(cfg, path):
+	return '%s/repos/%s/%s/contents/%s' % (API, cfg['owner'], cfg['repo'], path)
+
+
+def get_contents(cfg, path):
+	"""Returns (True, {'sha': ..., 'data': bytes or None}). A missing file is not an error:
+	sha and data are None. Files over 1MB come back without content, so those are read
+	through the blob API."""
+	ok, result = _request('GET', _contents_url(cfg, path), cfg, headers=_headers(cfg))
+	if not ok:
+		if result['code'] == 'not_found':
+			# The file, or the repository. A push straight after tells the two apart.
+			return True, {'sha': None, 'data': None}
+		return ok, result
+	try: body = result.json()
+	except Exception: return _fail('error', 'GitHub returned something that is not JSON.')
+	content, sha = body.get('content') or '', body.get('sha')
+	if not content and sha and (body.get('size') or 0) > 0:
+		url = '%s/repos/%s/%s/git/blobs/%s' % (API, cfg['owner'], cfg['repo'], sha)
+		ok, blob = _request('GET', url, cfg, headers=_headers(cfg))
+		if not ok: return ok, blob
+		try: content = blob.json().get('content') or ''
+		except Exception: content = ''
+	try: data = base64.b64decode(content)
+	except Exception: return _fail('error', 'Could not decode %s.' % path)
+	return True, {'sha': sha, 'data': data}
+
+
+def put_contents(cfg, path, data, message, sha=None):
+	"""Create or update a file. Pass the sha from get_contents to update; GitHub answers
+	409 (conflict) when someone else changed the file in between."""
+	payload = {'message': message, 'content': base64.b64encode(data).decode('ascii')}
+	if sha: payload['sha'] = sha
+	ok, result = _request('PUT', _contents_url(cfg, path), cfg, headers=_headers(cfg), data=json.dumps(payload))
+	if not ok: return ok, result
+	try: return True, (result.json().get('content') or {}).get('sha')
+	except Exception: return True, None

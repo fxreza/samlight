@@ -665,7 +665,7 @@
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=cloud_backup.enabled)</onclick>
                       </item>
                       <item>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
+                          <visible>Container(2000).HasFocus(10) + [String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true) | String.IsEqual(Window(10000).Property(redlight.watched_sync.enabled),true)]</visible>
                           <property name="setting_label">    - GitHub Token</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.token)]</property>
@@ -673,7 +673,7 @@
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_string&amp;setting_id=cloud_backup.token)</onclick>
                       </item>
                       <item>
-                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true)</visible>
+                          <visible>Container(2000).HasFocus(10) + [String.IsEqual(Window(10000).Property(redlight.cloud_backup.enabled),true) | String.IsEqual(Window(10000).Property(redlight.watched_sync.enabled),true)]</visible>
                           <property name="setting_label">    - Repository</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.repository)]</property>
@@ -703,6 +703,30 @@
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.cloud_backup.last_status)]</property>
                           <property name="setting_description">Result of the most recent backup. Select this row to run a backup right now</property>
                           <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=cloud_backup.run_now)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10)</visible>
+                          <property name="setting_label">Sync Watched Status Between Devices</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.watched_sync.enabled)]</property>
+                          <property name="setting_description">Share watched marks for movies and episodes, and dropped TV shows, between every device that uses the same GitHub token and repository. Marks made here are sent about a minute after the last one; other devices' marks are pulled at start-up and every hour while nothing plays. Resume points stay on each device. Only works with Red Light as the Watched Status Provider</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=watched_sync.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.watched_sync.enabled),true)</visible>
+                          <property name="setting_label">    - Pull Every (minutes)</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.watched_sync.interval_minutes)]</property>
+                          <property name="setting_description">How often to check for marks made on other devices. Your own marks are always sent about a minute after you make them, whatever this says</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_numeric&amp;setting_id=watched_sync.interval_minutes)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(10) + String.IsEqual(Window(10000).Property(redlight.watched_sync.enabled),true)</visible>
+                          <property name="setting_label">    - Last Sync</property>
+                          <property name="setting_type">action</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.watched_sync.last_status)]</property>
+                          <property name="setting_description">Result of the most recent watched sync. Select this row to sync right now</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=watched_sync.run_now)</onclick>
                       </item>
         <!-- Danger Zone -->
                       <item>

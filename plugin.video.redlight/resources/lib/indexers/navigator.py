@@ -513,6 +513,8 @@ class Navigator:
 		from modules.cloud_backup import backup_status_line
 		self.add({'mode': 'cloud_backup.run_now', 'isFolder': 'false'}, 'Back Up to Cloud Now  [I](%s)[/I]' % backup_status_line(), 'settings')
 		self.add({'mode': 'cloud_backup.restore_latest', 'isFolder': 'false'}, 'Restore from Cloud', 'settings')
+		from modules.watched_sync import status_line as watched_sync_status
+		self.add({'mode': 'watched_sync.run_now', 'isFolder': 'false'}, 'Sync Watched Status Now  [I](%s)[/I]' % watched_sync_status(), 'settings')
 		self.end_directory()
 
 	def maintenance(self):
