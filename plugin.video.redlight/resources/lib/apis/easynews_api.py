@@ -9,10 +9,10 @@ from caches.settings_cache import get_setting
 from modules.settings import easynews_refresh_credentials, easynews_exclude_adult
 from modules.dom_parser import parseDOM
 from modules.utils import chunks, remove_accents
-from modules.kodi_utils import make_session
+from modules.kodi_utils import lazy_session
 # from modules.kodi_utils import logger
 
-session = make_session()
+session = lazy_session()
 
 class EasyNewsAPI:
 	def __init__(self):

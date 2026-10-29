@@ -3,6 +3,7 @@
 import xbmc, xbmcgui, xbmcplugin, xbmcvfs, xbmcaddon
 import os
 from urllib.parse import urlencode, unquote
+from modules import widget_snapshot
 
 def addon_themes():
 	return [{'name': 'Light', 'value': ('FF434343', 'FF2E2E2E'), 'icon': 'light'}, {'name': 'Medium', 'value': ('FF373737', 'FF4a4347'), 'icon': 'medium'},
@@ -511,21 +512,28 @@ def add_dir(handle, url_params, list_name, icon_image='folder', fanart_image=Non
 	add_item(handle, url, listitem, isFolder)
 
 def make_listitem(offscreen=True):
-	return xbmcgui.ListItem(offscreen=offscreen)
+	# While a widget listing is being recorded this returns a recorder around the real
+	# ListItem; every setter still reaches Kodi, and is noted for the snapshot.
+	return widget_snapshot.new_listitem(offscreen)
 
 def add_item(handle, url, listitem, isFolder):
-	xbmcplugin.addDirectoryItem(handle, url, listitem, isFolder)
+	widget_snapshot.record_items([(url, listitem, isFolder)])
+	xbmcplugin.addDirectoryItem(handle, url, widget_snapshot.unwrap(listitem), isFolder)
 
 def add_items(handle, item_list):
-	xbmcplugin.addDirectoryItems(handle, item_list)
+	widget_snapshot.record_items(item_list)
+	xbmcplugin.addDirectoryItems(handle, [(url, widget_snapshot.unwrap(listitem), isFolder) for url, listitem, isFolder in item_list])
 
 def set_content(handle, content):
+	widget_snapshot.record_content(content)
 	xbmcplugin.setContent(handle, content)
 
 def set_category(handle, label):
+	widget_snapshot.record_category(label)
 	xbmcplugin.setPluginCategory(handle, label)
 
 def end_directory(handle, updateListing=False, cacheToDisc=True):
+	widget_snapshot.record_end(updateListing, cacheToDisc)
 	xbmcplugin.endOfDirectory(handle, updateListing=updateListing, cacheToDisc=cacheToDisc)
 
 # Estuary List (50) is for movies/tvshows content only — not plugin browse folders.
@@ -675,13 +683,35 @@ def container_content():
 	return get_infolabel('Container.Content')
 
 def set_sort_method(handle, method, labelMask=''):
+	widget_snapshot.record_sort_method(method, labelMask)
 	xbmcplugin.addSortMethod(handle, {'episodes': 24, 'files': 5, 'label': 2, 'none': 0}[method], labelMask=labelMask)
 
 def make_session(url='https://'):
 	import requests
 	session = requests.Session()
 	session.mount(url, requests.adapters.HTTPAdapter(pool_maxsize=100))
-	return session	
+	return session
+
+class LazyRequests(object):
+	"""Stands in for the requests module until the first network call.
+
+	Importing requests (with urllib3, ssl, charset_normalizer) is the single biggest part of a
+	cold plugin start, and a menu or widget built from cache never talks to the network."""
+	def __getattr__(self, name):
+		import requests
+		return getattr(requests, name)
+
+class LazySession(object):
+	"""A requests session that is only built on first use."""
+	def __init__(self, factory):
+		self._factory, self._session = factory, None
+
+	def __getattr__(self, name):
+		if self._session is None: self._session = self._factory()
+		return getattr(self._session, name)
+
+def lazy_session(url='https://'):
+	return LazySession(lambda: make_session(url))
 
 def make_playlist(playlist_type='video'):
 	return xbmc.PlayList({'music': 0, 'video': 1}[playlist_type])
@@ -804,6 +834,7 @@ def reload_skin():
 	execute_builtin('ReloadSkin()')
 
 def kodi_refresh():
+	widget_snapshot.invalidate('library refresh')
 	execute_builtin('UpdateLibrary(video,special://skin/foo)')
 
 SHUTTING_DOWN_PROP = 'redlight.shutting_down'
@@ -859,6 +890,7 @@ def prepare_service_shutdown():
 
 def schedule_widget_refresh(silent=True, reload_skin=False, defer_browsing=False, delay='00:00:02'):
 	if service_shutting_down(): return
+	widget_snapshot.invalidate('widget refresh scheduled')
 	url = 'plugin://plugin.video.redlight/?mode=refresh_widgets&silent=%s&reload_skin=%s&defer_browsing=%s' % (
 		'true' if silent else 'false', 'true' if reload_skin else 'false', 'true' if defer_browsing else 'false')
 	execute_builtin('AlarmClock(redlight_widget_refresh,RunPlugin(%s),%s,silent)' % (url, delay))
@@ -872,6 +904,7 @@ def refresh_after_list_change(in_container=False):
 	schedule_widget_refresh(silent=True)
 
 def mark_playback_widget_refresh():
+	widget_snapshot.invalidate('playback saved')
 	try:
 		from time import time
 		set_property(PLAYBACK_WIDGET_REFRESH_PROP, str(time()))
@@ -965,6 +998,7 @@ def activate_window(params, block=False):
 	return execute_builtin('ActivateWindow(Videos,%s,return)' % params, block)
 
 def container_refresh():
+	widget_snapshot.invalidate('container refresh')
 	return execute_builtin('Container.Refresh')
 
 def container_refresh_input(params, block=False):

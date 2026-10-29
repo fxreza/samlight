@@ -90,7 +90,10 @@ def consume_persisted_nextep_play_stash():
 		except: pass
 		return None
 
-def schedule_nextep_stashed_play(stash, show_busy=None):
+def schedule_nextep_stashed_play(stash, show_busy=None, wait_end=False):
+	"""Start the next episode's player in its own interpreter. wait_end=True: it resolves its
+	link while this episode still plays and switches when the credits end; False (the user
+	pressed Play in the alert): it resolves, then cuts this episode and plays."""
 	if not stash:
 		return False
 	if nextep_autoplay_cancelled() or nextep_end_play_superseded(stash.get('meta') if stash else None):
@@ -120,8 +123,26 @@ def schedule_nextep_stashed_play(stash, show_busy=None):
 	except:
 		pass
 	play_key = settings.playback_key()
-	kodi_utils.run_plugin({'mode': 'playback.%s' % play_key, play_key: play_key, 'nextep_stash_play': 'true'})
+	kodi_utils.run_plugin({'mode': 'playback.%s' % play_key, play_key: play_key, 'nextep_stash_play': 'true',
+		'nextep_wait_end': 'true' if wait_end else 'false'})
 	return True
+
+class _QuietResolveDialog(object):
+	"""Stands in for the loading screen while the next episode resolves behind the playing video.
+	Once that video has ended and a source still needs resolving, the real screen takes over."""
+	window_mode = 'resolver'
+	is_canceled = False
+	resume_choice = None
+	def iscanceled(self): return False
+	def skip_resolved(self): return False
+	def reset_is_cancelled(self): pass
+	def enable_resolver(self): pass
+	def enable_resume(self, percent): pass
+	def busy_spinner(self, toggle='true'): pass
+	def update_scraper(self, *args, **kwargs): pass
+	def update_resolver(self, text='', percent=0): pass
+	def close(self): pass
+	def run(self): pass
 
 def _nextep_stash_key(meta):
 	try:
@@ -530,6 +551,8 @@ class Sources():
 				_set_nextep_stash_play_in_flight(False)
 				kodi_utils.logger('Red Light', 'Autoplay next episode play: no persisted stash')
 				return
+			self._nextep_wait_end = params_get('nextep_wait_end') == 'true'
+			self._nextep_quiet_resolve = True
 			self.params = dict(stash.get('params') or {})
 			self.params['background'] = 'false'
 			self.params['nextep_stash_play'] = 'true'
@@ -2446,6 +2469,54 @@ class Sources():
 		except:
 			pass
 
+	def _nextep_quiet_ui_check(self):
+		"""The previous episode has ended while a source still needs resolving: show the screen."""
+		if not getattr(self, '_nextep_quiet_resolve', False): return
+		try:
+			if kodi_utils.kodi_player().isPlayingVideo(): return
+		except: return
+		self._nextep_quiet_resolve = False
+		self.progress_dialog = None
+		try:
+			self._make_progress_dialog()
+			self._prepare_resolve_ui()
+		except: pass
+
+	def _wait_previous_episode_end(self):
+		"""The next episode's link is resolved. Wait for the current episode to end on its own
+		(nextep_wait_end), or cut it now because the user pressed Play in the alert.
+
+		Returns 'play', 'stopped' (the user pressed Stop: no autoplay) or 'cancelled'."""
+		if not getattr(self, '_nextep_wait_end', False):
+			self._stop_active_playback(light=True)
+			return 'play'
+		player = kodi_utils.kodi_player()
+		end_kind_prop = 'redlight.playback_end_kind'
+		was_playing = False
+		deadline = time.time() + 2 * 3600
+		while time.time() < deadline:
+			try:
+				if nextep_autoplay_cancelled() or self._user_cancelled_resolve():
+					kodi_utils.logger('Red Light', 'Autoplay next episode: cancelled while waiting for the episode end')
+					return 'cancelled'
+				if player.isPlayingVideo():
+					was_playing = True
+				else:
+					break
+			except: break
+			kodi_utils.sleep(250)
+		# Kodi reports the end a moment before the player's own callback names it.
+		kind = ''
+		for _ in range(8):
+			kind = kodi_utils.get_property(end_kind_prop)
+			if kind: break
+			kodi_utils.sleep(200)
+		if kind == 'stopped' and was_playing:
+			kodi_utils.logger('Red Light', 'Autoplay next episode: the user stopped the episode, not playing the next one')
+			return 'stopped'
+		kodi_utils.logger('Red Light', 'Autoplay next episode: episode ended, playing the resolved next one')
+		return 'play'
+
 	def _stop_active_playback(self, wait_for_open=False, light=False):
 		if wait_for_open:
 			self._wait_for_player_open()
@@ -2469,7 +2540,9 @@ class Sources():
 		kodi_utils.clear_property(PROP_PLAY_OPENING)
 		self._release_resolve_busy()
 		kodi_utils.clear_property(PROP_RESOLVE_CANCEL)
-		self._request_player_stop(light=True)
+		# A next episode that stood down because the user stopped the current one must not
+		# stop whatever the user started since.
+		if not getattr(self, '_nextep_abort_no_stop', False): self._request_player_stop(light=True)
 		self._kill_progress_dialog(join_timeout=0.5, resolve_cancel=True)
 		self._abort_plugin_resolve()
 		kodi_utils.hide_busy_dialog()
@@ -2793,9 +2866,14 @@ class Sources():
 				self._kill_progress_dialog()
 				return
 			if defer_stop_for_nextep:
-				if getattr(self, '_nextep_alert_handled', False) and not self.resolve_dialog_made:
-					self._make_resolve_dialog()
-				self._stop_active_playback(light=True)
+				if getattr(self, '_nextep_quiet_resolve', False):
+					# Stashed next episode: resolve now, behind the playing video, with no screen.
+					self.progress_dialog = _QuietResolveDialog()
+					self.resolve_dialog_made = True
+				else:
+					if getattr(self, '_nextep_alert_handled', False) and not self.resolve_dialog_made:
+						self._make_resolve_dialog()
+					self._stop_active_playback(light=True)
 			if not self.progress_dialog and not self.background:
 				self._make_progress_dialog()
 			if getattr(self, '_drop_resume_percent', None):
@@ -2818,6 +2896,7 @@ class Sources():
 						break
 					self._touch_sources_busy()
 					kodi_utils.hide_busy_dialog()
+					self._nextep_quiet_ui_check()
 					if not self.progress_dialog:
 						if self._user_cancelled_resolve():
 							self._resolve_user_cancelled = True
@@ -2889,7 +2968,14 @@ class Sources():
 								self._resolve_user_cancelled = True
 								self.cancel_all_playback = True
 								break
-							if self._nextep_aio_en_fresh_start(item):
+							if getattr(self, '_nextep_quiet_resolve', False) or self.params.get('nextep_stash_play') == 'true':
+								if self._nextep_aio_en_fresh_start(item): self.playback_percent = 0.0
+								if self._wait_previous_episode_end() != 'play':
+									self._nextep_abort_no_stop = True
+									self._resolve_user_cancelled = True
+									self.cancel_all_playback = True
+									break
+							elif self._nextep_aio_en_fresh_start(item):
 								self.playback_percent = 0.0
 								self._stop_active_playback()
 							elif self.background:
@@ -2957,6 +3043,8 @@ class Sources():
 
 	def get_resume_status(self, percent):
 		if settings.auto_resume(self.media_type, self.autoplay): return float(percent)
+		# The next episode resolves behind the playing video: nothing can ask, so resume.
+		if getattr(self, '_nextep_quiet_resolve', False): return float(percent)
 		choice = self._make_resume_dialog(percent)
 		if self._user_cancelled_resolve() or choice in (None, 'cancel'):
 			return 'cancel'

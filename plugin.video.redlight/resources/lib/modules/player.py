@@ -19,6 +19,7 @@ PROP_NEXTEP_PREP_DECLINED = 'redlight.nextep_prep_declined'
 PROP_AUTOSCRAPE_NEXTEP_READY = 'redlight.autoscrape_nextep_ready'
 PROP_NEXTEP_AUTOPLAY_CANCELLED = 'redlight.nextep_autoplay_cancelled'
 PROP_NEXTEP_NATURAL_END = 'redlight.nextep_natural_end'
+PROP_PLAYBACK_END_KIND = 'redlight.playback_end_kind'
 PROP_RANDOM_CONTINUAL_SKIP_ATTEMPTS = 'redlight.random_continual_skip_attempts'
 PROP_ACTIVE_PLAYBACK_KEY = 'redlight.active_playback_key'
 _NEXTEP_NATURAL_END_SEC = 15
@@ -81,12 +82,26 @@ class RedLightPlayer(xbmc.Player):
 		self._playback_end_seen = True
 		# A stop Red Light made itself on a frozen stream is not the user's.
 		if not getattr(self, '_stall_stopping', False): self._user_stopped = True
+		self._note_playback_end('stopped')
 		self._maybe_show_nextep_handoff_cover()
 
 	def onPlayBackEnded(self):
 		self._playback_end_seen = True
 		self._playback_ended = True
+		self._note_playback_end('ended')
 		self._maybe_show_nextep_handoff_cover()
+
+	def _note_playback_end(self, kind):
+		# Read by a next-episode player that is already resolved and waiting: 'ended' plays,
+		# 'stopped' (the user pressed Stop) does not. Home widgets are stale from here on.
+		try:
+			if kind == 'stopped' and ku.get_property(PROP_PLAYBACK_END_KIND) == 'ended': return
+			ku.set_property(PROP_PLAYBACK_END_KIND, kind)
+		except: pass
+		try:
+			from modules import widget_snapshot
+			widget_snapshot.invalidate('playback %s' % kind)
+		except: pass
 
 	def run(self, url=None, obj=None):
 		ku.hide_busy_dialog()
@@ -516,15 +531,17 @@ class RedLightPlayer(xbmc.Player):
 			if not playback_superseded and self.autoplay_nextep:
 				try:
 					from modules.sources import clear_nextep_autoplay_stash, clear_orphan_nextep_play_stash, nextep_autoplay_cancelled, nextep_end_play_superseded, peek_nextep_autoplay_stash, schedule_nextep_stashed_play, take_nextep_autoplay_stash
-					if nextep_autoplay_cancelled() or nextep_end_play_superseded():
+					if getattr(self, '_nextep_stash_play_scheduled', False):
+						# The next episode's player is already up and holds the resolve lock:
+						# that lock is not another playback superseding this one.
+						autoplay_stash_scheduled = True
+					elif nextep_autoplay_cancelled() or nextep_end_play_superseded():
 						clear_nextep_autoplay_stash()
 						clear_orphan_nextep_play_stash()
 						if nextep_autoplay_cancelled():
 							self._log_nextep('Autoplay next episode: skipped at episode end (cancelled)')
 						else:
 							self._log_nextep('Autoplay next episode: skipped at episode end (superseded by user playback)')
-					elif getattr(self, '_nextep_stash_play_scheduled', False):
-						autoplay_stash_scheduled = True
 					elif getattr(self, '_nextep_alert_shown', False):
 						if peek_nextep_autoplay_stash():
 							stash = take_nextep_autoplay_stash()
@@ -1310,12 +1327,14 @@ class RedLightPlayer(xbmc.Player):
 			remaining = round(float(self.total_time) - float(self.curr_time))
 		except:
 			return
-		if remaining > _NEXTEP_CLOSE_EARLY_PLAY_SEC or remaining <= 0:
+		# Start the next episode's player well before the end: it needs a cold interpreter
+		# start plus the resolve, and then waits for this episode to finish on its own.
+		if remaining > st.nextep_early_play_seconds() or remaining <= 0:
 			return
 		stash = take_nextep_autoplay_stash()
 		if not stash:
 			return
-		if schedule_nextep_stashed_play(stash, show_busy=False):
+		if schedule_nextep_stashed_play(stash, show_busy=False, wait_end=True):
 			self._nextep_stash_play_scheduled = True
 			self._log_nextep('Autoplay next episode: early stash resolve at remaining=%ss' % remaining)
 
@@ -1713,6 +1732,7 @@ class RedLightPlayer(xbmc.Player):
 			self._subtitle_alert_fetch_done = False
 			self._playback_started_at = time.time()
 			self._nextep_prep_attempted = False
+			ku.clear_property(PROP_PLAYBACK_END_KIND)
 			ku.clear_property(PROP_NEXTEP_PENDING)
 			ku.clear_property(PROP_NEXTEP_PREP_SCHEDULED)
 			ku.clear_property(PROP_NEXTEP_PREP_DECLINED)

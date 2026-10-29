@@ -4,7 +4,8 @@ import re
 import struct
 import xbmc
 import xbmcvfs
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from caches.settings_cache import get_setting, set_setting
 from modules import kodi_utils as ku, settings as st
 

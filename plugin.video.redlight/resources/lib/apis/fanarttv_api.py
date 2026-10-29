@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-from modules.kodi_utils import make_session
+from modules.kodi_utils import lazy_session
 # from modules.kodi_utils import logger
 
 _BASE = 'https://webservice.fanart.tv/v3'
 _EMPTY_IDS = (None, '', 'None', 'empty_setting', 0, '0', '0000000')
-session = make_session('https://webservice.fanart.tv')
+session = lazy_session('https://webservice.fanart.tv')
 
 def _headers(api_key):
 	return {'api-key': api_key, 'client-key': api_key, 'User-Agent': 'plugin.video.redlight'}

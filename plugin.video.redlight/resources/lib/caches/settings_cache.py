@@ -389,6 +389,7 @@ class SettingsCache:
 			except: pass
 		if provider_sync and setting_id == 'watched_indicators' and str(setting_value) != str(prev_watched_indicators):
 			_sync_watched_provider_on_switch(setting_value)
+		_invalidate_widget_snapshots(setting_id)
 
 	def set_many(self, settings_list, load_properties=True):
 		dbcon = connect_database('settings_db')
@@ -429,6 +430,17 @@ class SettingsCache:
 		except: return False
 
 settings_cache = SettingsCache()
+
+# Bookkeeping settings that services write on a timer; they do not change what a widget shows.
+_WIDGET_NEUTRAL_SETTING_PARTS = ('last_run', 'last_sync', 'last_pull', 'last_push', 'expires', 'alert_state', 'token', 'fingerprint', 'etag', 'hash')
+
+def _invalidate_widget_snapshots(setting_id):
+	try:
+		lowered = str(setting_id).lower()
+		if any(part in lowered for part in _WIDGET_NEUTRAL_SETTING_PARTS): return
+		from modules import widget_snapshot
+		widget_snapshot.invalidate()
+	except: pass
 
 def set_setting(setting_id, value, provider_sync=True):
 	settings_cache.set(setting_id, value, provider_sync=provider_sync)
@@ -508,8 +520,11 @@ def _defaultsettings_ids(d_settings):
 
 _ACTIVE_KODI_PROFILE = 'redlight.active_kodi_profile'
 
-def sync_kodi_profile_context():
-	"""Reload settings properties when the active Kodi profile changes (multi-profile / shared Trakt)."""
+def sync_kodi_profile_context(allow_bootstrap=True):
+	"""Reload settings properties when the active Kodi profile changes (multi-profile / shared Trakt).
+
+	allow_bootstrap=False (directory listings): note the profile but never load the window
+	properties here; get_setting falls back to settings.db until the service has loaded them."""
 	try:
 		current = kodi_utils.translate_path(kodi_utils.addon_info('profile'))
 	except:
@@ -522,6 +537,8 @@ def sync_kodi_profile_context():
 		kodi_utils.set_property(_ACTIVE_KODI_PROFILE, current)
 		kodi_utils.clear_property(_SETTINGS_PROPERTIES_LOADED)
 		settings_cache.clear_db_cache()
+		if not allow_bootstrap:
+			return True
 		if kodi_utils.get_property(_SETTINGS_DB_SYNCED) == 'true':
 			_apply_settings_properties_from_db()
 		else:
@@ -529,6 +546,8 @@ def sync_kodi_profile_context():
 		return True
 	if not _properties_loaded():
 		kodi_utils.set_property(_ACTIVE_KODI_PROFILE, current)
+		if not allow_bootstrap:
+			return False
 		if kodi_utils.get_property(_SETTINGS_DB_SYNCED) == 'true':
 			_apply_settings_properties_from_db()
 		else:

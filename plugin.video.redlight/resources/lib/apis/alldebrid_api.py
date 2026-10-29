@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from threading import Thread
 from urllib.parse import quote
 from caches.main_cache import cache_object

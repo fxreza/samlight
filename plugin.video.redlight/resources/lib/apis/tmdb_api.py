@@ -3,10 +3,10 @@ import datetime
 from caches.meta_cache import cache_function
 from caches.lists_cache import lists_cache_object
 from modules.settings import get_meta_filter, tmdb_api_key, lists_cache_duraton
-from modules.kodi_utils import make_session, remove_keys
+from modules.kodi_utils import lazy_session, remove_keys
 # from modules.kodi_utils import logger
 
-session = make_session('https://api.themoviedb.org/3')
+session = lazy_session('https://api.themoviedb.org/3')
 
 def tmdb_dict_removals():
 	return ('adult', 'backdrop_path', 'genre_ids', 'original_language', 'original_title', 'overview', 'popularity', 'vote_count', 'video', 'origin_country', 'original_name')

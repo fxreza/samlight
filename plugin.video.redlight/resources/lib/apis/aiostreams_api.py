@@ -3,7 +3,8 @@ ENABLED = True
 
 import json
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from urllib.parse import urlencode
 from caches.settings_cache import get_setting
 from modules import kodi_utils

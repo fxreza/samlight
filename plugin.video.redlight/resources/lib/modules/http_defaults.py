@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """Shared HTTP defaults for meta account APIs (Trakt, Simkl, MDBList, PunchPlay)."""
-from requests.adapters import Retry
-
 # Single request wait for meta sync / list / scrobble calls.
 META_API_TIMEOUT = 20
 
 def meta_status_retry():
 	"""Retry flaky server responses only — not connect/read failures (airplane/offline)."""
+	from requests.adapters import Retry
 	return Retry(
 		total=2,
 		connect=0,

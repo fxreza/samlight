@@ -16,9 +16,9 @@ Master toggle: provider.nzb
 import hashlib
 from urllib.parse import quote as urlquote
 from caches.settings_cache import get_setting
-from modules.kodi_utils import make_session, logger
+from modules.kodi_utils import lazy_session, logger
 
-session = make_session('https://')
+session = lazy_session('https://')
 
 def nzb_link_hash(link):
 	"""TorBox usenet cache key — MD5 of the NZB download URL."""

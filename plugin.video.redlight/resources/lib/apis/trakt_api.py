@@ -2,7 +2,8 @@
 import json
 import re
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from urllib.parse import unquote, quote, quote_plus
 from caches import trakt_cache
 from caches.settings_cache import get_setting, set_setting, settings_cache

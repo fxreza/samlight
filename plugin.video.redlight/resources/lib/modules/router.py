@@ -34,12 +34,24 @@ def routing(sys):
 	mode = params.get('mode', 'navigator.main')
 	# Kodi is asking for a list (a widget or a menu): note when, so the after-playback
 	# check can tell whether the home widgets were built before or after the save.
+	is_listing = False
 	try:
-		if int(sys.argv[1]) >= 0 and not mode.startswith('playback'): kodi_utils.mark_listing_started()
+		is_listing = int(sys.argv[1]) >= 0 and not mode.startswith('playback')
+		if is_listing: kodi_utils.mark_listing_started()
 	except: pass
+	# A Home widget that was built before and whose data has not changed is replayed from its
+	# snapshot: no metadata or watched modules, no rebuild. Falls through when there is none.
+	try:
+		from modules import widget_snapshot
+		if widget_snapshot.try_replay(sys.argv, mode, params): return
+	except Exception as e:
+		kodi_utils.logger('routing', 'widget snapshot: %s' % e)
 	try:
 		from caches.settings_cache import sync_kodi_profile_context
-		sync_kodi_profile_context()
+		# Listings read settings.db directly; only non-listing calls may load the window
+		# properties here. At start-up the service does that once, while Home is already
+		# asking for its widgets, and every widget doing it too made them take 12 to 16 s.
+		sync_kodi_profile_context(allow_bootstrap=not is_listing)
 	except Exception as e:
 		kodi_utils.logger('routing', 'profile context: %s' % e)
 	prepare_directory_listing(mode)

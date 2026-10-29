@@ -4,11 +4,11 @@ from caches.main_cache import cache_object
 from caches.settings_cache import get_setting, set_setting
 from modules.source_utils import supported_video_extensions, seas_ep_filter, extras
 from modules.utils import copy2clip, make_qrcode
-from modules.kodi_utils import make_session, ok_dialog, notification, progress_dialog, sleep
+from modules.kodi_utils import lazy_session, ok_dialog, notification, progress_dialog, sleep
 # from modules.kodi_utils import logger
 
-api_session = make_session('https://offcloud.com/api/')
-oauth_session = make_session('https://offcloud.com/oauth/')
+api_session = lazy_session('https://offcloud.com/api/')
+oauth_session = lazy_session('https://offcloud.com/oauth/')
 
 class OffcloudAPI:
 	base_url = 'https://offcloud.com/api/'

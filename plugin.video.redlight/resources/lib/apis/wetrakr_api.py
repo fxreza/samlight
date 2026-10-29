@@ -6,7 +6,8 @@ Watched Status Provider = Red Light (or another provider) for UI state.
 """
 import json
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from caches.settings_cache import get_setting, set_setting
 from modules import kodi_utils, settings
 from modules.utils import copy2clip, make_qrcode, make_tinyurl

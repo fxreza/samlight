@@ -5,7 +5,8 @@ import os
 import re
 import xbmc
 import xbmcgui
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from difflib import SequenceMatcher
 from urllib.parse import quote, unquote
 from modules import kodi_utils as ku, settings as st

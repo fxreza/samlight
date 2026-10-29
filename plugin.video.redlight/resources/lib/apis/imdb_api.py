@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
 import json
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from html import unescape
 from caches.base_cache import connect_database
 from caches.main_cache import cache_object

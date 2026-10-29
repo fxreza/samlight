@@ -3,7 +3,8 @@ import json
 import os
 import time
 import calendar
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from datetime import datetime
 from threading import Lock
 from urllib.parse import urljoin, quote

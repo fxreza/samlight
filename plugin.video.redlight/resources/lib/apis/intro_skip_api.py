@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from caches.main_cache import main_cache
 
 THEINTRODB_URL = 'https://api.theintrodb.org/v3/media'

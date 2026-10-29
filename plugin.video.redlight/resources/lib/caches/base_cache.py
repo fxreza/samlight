@@ -137,6 +137,9 @@ def ensure_listing_databases_ready():
 	"""Plugin entry can run before the service; guarantee core DB tables and settings rows exist."""
 	ensure_database_tables('settings_db')
 	ensure_database_tables('navigator_db')
+	# The service syncs settings.db itself right after it starts. Widgets that open in the same
+	# seconds must not each run that sync too (three of them did, in parallel, at every boot).
+	if kodi_utils.get_property('redlight.service_started'): return
 	if kodi_utils.get_property('redlight.settings_db_synced') != 'true':
 		try:
 			from caches.settings_cache import sync_settings
@@ -230,6 +233,10 @@ def clean_databases():
 	return kodi_utils.show_text('Cache Clean Results', text='\n----------------------------------\n'.join(results), font_size='large')
 
 def clear_cache(cache_type, silent=False):
+	try:
+		from modules import widget_snapshot
+		widget_snapshot.invalidate('cache cleared')
+	except: pass
 	def _confirm(): return silent or kodi_utils.confirm_dialog()
 	success = True
 	if cache_type == 'meta':
@@ -367,6 +374,10 @@ def clear_all_cache():
 			kodi_utils.sleep(1000)
 		except: pass
 	try: clear_easynews_search_history(silent=True)
+	except: pass
+	try:
+		from modules import widget_snapshot
+		widget_snapshot.clear_all()
 	except: pass
 	progressDialog.close()
 	kodi_utils.sleep(100)

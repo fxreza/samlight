@@ -1,0 +1,324 @@
+# -*- coding: utf-8 -*-
+"""Widget snapshots: replay a finished listing instead of rebuilding it.
+
+Kodi asks for every plugin widget on Home again whenever Home opens, playback
+starts or playback stops. Each of those requests is a fresh Python interpreter
+(reuse of the language invoker crashes Kodi on the Fire TV), and each rebuild
+loads the metadata and watched modules and assembles every item from scratch.
+On a Fire TV that is 5 to 12 seconds per widget, several at once.
+
+A snapshot records what a listing sent to Kodi (the list items, the content
+type, the category and the end-of-directory call) the first time it is built
+for a widget, and replays it on the next identical request. A replay needs
+only xbmcgui / xbmcplugin and this module, so it costs the interpreter start
+and little else.
+
+Snapshots are keyed by the full plugin URL. Every snapshot carries the widget
+generation; `invalidate()` bumps it, which makes every snapshot stale at once.
+It is called wherever the addon already asks Kodi to refresh (watched marks,
+progress saves, list membership changes, settings changes, playback stop), so
+a replay never outlives the data it was built from by more than the TTL.
+"""
+import os
+import sys
+import time
+import pickle
+import binascii
+
+import xbmc
+import xbmcgui
+import xbmcplugin
+
+GENERATION_PROP = 'redlight.widget_generation'
+_GENERATION_FILE = 'widget_generation'
+_CACHE_DIR = 'widget_cache'
+_FORMAT = 2
+# Listings that are safe to replay: their contents only change through things
+# the addon knows about (watched status, list membership, settings) or with time.
+SNAPSHOT_MODES = frozenset((
+	'build_movie_list', 'build_tvshow_list', 'build_season_list', 'build_episode_list',
+	'build_in_progress_episode', 'build_recently_watched_episode', 'build_next_episode',
+	'build_my_calendar', 'build_mdbl_calendar', 'build_punchplay_calendar', 'build_simkl_calendar',
+	'build_simkl_public_calendar', 'build_mdbl_next_up',
+	'trakt.list.build_trakt_list', 'tmdblist.build_tmdb_list', 'personal_lists.build_personal_list',
+	'mdblist.build_mdbl_list', 'simkl.list.build_simkl_list', 'punchplay.list.build_punchplay_list',
+))
+_NO_SNAPSHOT_PARAMS = ('random', 'shuffle', 'random_support', 'random_continual')
+_TAG_GETTERS = ('getVideoInfoTag', 'getMusicInfoTag')
+
+_state = {'key': None, 'ops': [], 'items': 0, 'failed': False}
+
+def _window():
+	return xbmcgui.Window(10000)
+
+def _profile():
+	try:
+		import xbmcaddon
+		import xbmcvfs
+		return xbmcvfs.translatePath(xbmcaddon.Addon('plugin.video.redlight').getAddonInfo('profile'))
+	except Exception:
+		return _window().getProperty('redlight.addon_profile') or ''
+
+def _cache_dir():
+	path = os.path.join(_profile(), _CACHE_DIR)
+	if not os.path.isdir(path):
+		try: os.makedirs(path)
+		except Exception: pass
+	return path
+
+def _generation_file():
+	return os.path.join(_profile(), _GENERATION_FILE)
+
+def _log(message):
+	try: xbmc.log('###Red Light###: Widget snapshot: %s' % message, xbmc.LOGINFO)
+	except Exception: pass
+
+def ttl_seconds():
+	"""How long a replayed widget may lag behind data the addon does not see change (new airings)."""
+	try:
+		from caches.settings_cache import get_setting
+		minutes = int(get_setting('redlight.widget_snapshot_minutes', '20') or 20)
+	except Exception:
+		minutes = 20
+	return max(60, minutes * 60)
+
+def current_generation():
+	"""The generation lives in a window property while Kodi runs and in a file across restarts."""
+	window = _window()
+	value = window.getProperty(GENERATION_PROP)
+	if value: return value
+	try:
+		with open(_generation_file(), 'r') as handle: value = handle.read().strip()
+	except Exception:
+		value = ''
+	if not value: value = '1'
+	try: window.setProperty(GENERATION_PROP, value)
+	except Exception: pass
+	return value
+
+def invalidate(reason=''):
+	"""Make every snapshot stale. Cheap: one property write and one tiny file write."""
+	try:
+		new_value = str(int(current_generation()) + 1)
+	except Exception:
+		new_value = str(int(time.time()))
+	try: _window().setProperty(GENERATION_PROP, new_value)
+	except Exception: pass
+	try:
+		with open(_generation_file(), 'w') as handle: handle.write(new_value)
+	except Exception: pass
+	if reason: _log('invalidated (%s)' % reason)
+
+def is_widget_request(argv):
+	"""A directory request from outside the addon: a Home widget, or the first step in from Home."""
+	try:
+		if int(argv[1]) < 0: return False
+	except Exception:
+		return False
+	return 'plugin.video.redlight' not in xbmc.getInfoLabel('Container.PluginName')
+
+def eligible(mode, params):
+	if mode not in SNAPSHOT_MODES: return False
+	for name in _NO_SNAPSHOT_PARAMS:
+		if str(params.get(name, 'false')).lower() == 'true': return False
+	return True
+
+def make_key(argv):
+	# crc32 plus length: cheap (no hashlib / OpenSSL import) and ample for a handful of widget URLs.
+	raw = ('%s%s|%s' % (argv[0], argv[2], _profile())).encode('utf-8')
+	return '%08x%x' % (binascii.crc32(raw) & 0xffffffff, len(raw))
+
+def _path(key):
+	return os.path.join(_cache_dir(), '%s.pkl' % key)
+
+def _addon_version():
+	try:
+		import xbmcaddon
+		return xbmcaddon.Addon('plugin.video.redlight').getAddonInfo('version')
+	except Exception:
+		return _window().getProperty('redlight.addon_version') or ''
+
+# ---------------------------------------------------------------- recording
+
+def recording():
+	return _state['key'] is not None and not _state['failed']
+
+def begin(key):
+	_state['key'], _state['ops'], _state['items'], _state['failed'] = key, [], 0, False
+
+def abandon():
+	_state['key'], _state['ops'], _state['items'], _state['failed'] = None, [], 0, False
+
+def _plain(value):
+	"""Make call arguments picklable. xbmc.Actor objects become tagged tuples."""
+	if isinstance(value, (str, int, float, bool)) or value is None: return value
+	if isinstance(value, list): return [_plain(v) for v in value]
+	if isinstance(value, tuple): return tuple(_plain(v) for v in value)
+	if isinstance(value, dict): return {str(k): _plain(v) for k, v in value.items()}
+	if type(value).__name__ == 'Actor':
+		return ('__actor__', value.getName(), value.getRole(), value.getOrder(), value.getThumbnail())
+	raise TypeError('not snapshot safe: %r' % type(value))
+
+def _restore(value):
+	if isinstance(value, tuple):
+		if len(value) == 5 and value[0] == '__actor__':
+			return xbmc.Actor(name=value[1], role=value[2], order=value[3], thumbnail=value[4])
+		return tuple(_restore(v) for v in value)
+	if isinstance(value, list): return [_restore(v) for v in value]
+	if isinstance(value, dict): return {k: _restore(v) for k, v in value.items()}
+	return value
+
+class Recorder(object):
+	"""Wraps a ListItem (or its info tag) and notes every setter call it forwards."""
+	__slots__ = ('_real', '_ops')
+
+	def __init__(self, real, ops):
+		object.__setattr__(self, '_real', real)
+		object.__setattr__(self, '_ops', ops)
+
+	def __getattr__(self, name):
+		attr = getattr(self._real, name)
+		if not callable(attr): return attr
+		if name in _TAG_GETTERS:
+			def tag_getter(*args, **kwargs):
+				tag = attr(*args, **kwargs)
+				sub = []
+				try: self._ops.append((name, _plain(args), _plain(kwargs), sub))
+				except Exception: _state['failed'] = True
+				return Recorder(tag, sub)
+			return tag_getter
+		if name.startswith('set') or name.startswith('add'):
+			def setter(*args, **kwargs):
+				result = attr(*args, **kwargs)
+				try: self._ops.append((name, _plain(args), _plain(kwargs)))
+				except Exception: _state['failed'] = True
+				return result
+			return setter
+		return attr
+
+def unwrap(listitem):
+	return listitem._real if isinstance(listitem, Recorder) else listitem
+
+def new_listitem(offscreen=True):
+	real = xbmcgui.ListItem(offscreen=offscreen)
+	if not recording(): return real
+	ops = [('__new__', offscreen)]
+	return Recorder(real, ops)
+
+def record_items(item_list):
+	if not recording(): return
+	recorded = []
+	for url, listitem, is_folder in item_list:
+		if not isinstance(listitem, Recorder):
+			_state['failed'] = True
+			return
+		recorded.append((url, listitem._ops, bool(is_folder)))
+	_state['ops'].append(('items', recorded))
+	_state['items'] += len(recorded)
+
+def record_content(content):
+	if recording(): _state['ops'].append(('content', content))
+
+def record_category(label):
+	if recording(): _state['ops'].append(('category', label))
+
+def record_sort_method(method, label_mask):
+	if recording(): _state['ops'].append(('sort', method, label_mask))
+
+def record_end(update_listing, cache_to_disc):
+	if not recording(): return
+	_state['ops'].append(('end', bool(update_listing), bool(cache_to_disc)))
+	key, ops, count = _state['key'], _state['ops'], _state['items']
+	abandon()
+	if count <= 0: return
+	data = {'format': _FORMAT, 'key': key, 'generation': current_generation(), 'time': time.time(),
+			'version': _addon_version(), 'ops': ops}
+	try:
+		payload = pickle.dumps(data, protocol=2)
+		path = _path(key)
+		tmp = '%s.%s.tmp' % (path, os.getpid())
+		with open(tmp, 'wb') as handle: handle.write(payload)
+		os.replace(tmp, path)
+	except Exception as error:
+		_log('store failed: %s' % error)
+
+# ------------------------------------------------------------------ replay
+
+def _load(key):
+	path = _path(key)
+	try:
+		if not os.path.isfile(path): return None
+		with open(path, 'rb') as handle: data = pickle.load(handle)
+	except Exception:
+		try: os.remove(path)
+		except Exception: pass
+		return None
+	if not isinstance(data, dict) or data.get('format') != _FORMAT or data.get('key') != key: return None
+	if data.get('version') != _addon_version(): return None
+	if data.get('generation') != current_generation(): return None
+	if time.time() - float(data.get('time', 0)) > ttl_seconds(): return None
+	return data
+
+def _build(ops):
+	offscreen = True
+	if ops and ops[0][0] == '__new__': offscreen = bool(ops[0][1])
+	listitem = xbmcgui.ListItem(offscreen=offscreen)
+	_apply(listitem, ops)
+	return listitem
+
+def _apply(target, ops):
+	for op in ops:
+		name = op[0]
+		if name == '__new__': continue
+		if name in _TAG_GETTERS:
+			tag = getattr(target, name)(*_restore(op[1]), **_restore(op[2]))
+			_apply(tag, op[3])
+			continue
+		try: getattr(target, name)(*_restore(op[1]), **_restore(op[2]))
+		except Exception: pass
+
+def replay(handle, key):
+	"""Send a stored listing to Kodi. Returns False when there is nothing fresh to replay."""
+	data = _load(key)
+	if not data: return False
+	sort_methods = {'episodes': 24, 'files': 5, 'label': 2, 'none': 0}
+	try:
+		for op in data['ops']:
+			kind = op[0]
+			if kind == 'items':
+				xbmcplugin.addDirectoryItems(handle, [(url, _build(ops), folder) for url, ops, folder in op[1]])
+			elif kind == 'content': xbmcplugin.setContent(handle, op[1])
+			elif kind == 'category': xbmcplugin.setPluginCategory(handle, op[1])
+			elif kind == 'sort': xbmcplugin.addSortMethod(handle, sort_methods.get(op[1], 0), labelMask=op[2])
+			elif kind == 'end': xbmcplugin.endOfDirectory(handle, updateListing=op[1], cacheToDisc=op[2])
+	except Exception as error:
+		_log('replay failed, rebuilding: %s' % error)
+		try: os.remove(_path(key))
+		except Exception: pass
+		return False
+	return True
+
+def try_replay(argv, mode, params):
+	"""Entry point for the router: True when the request was answered from a snapshot."""
+	try:
+		if not is_widget_request(argv) or not eligible(mode, params): return False
+		key = make_key(argv)
+		if replay(int(argv[1]), key):
+			_log('replayed %s' % mode)
+			return True
+		begin(key)
+	except Exception as error:
+		_log('skipped: %s' % error)
+		abandon()
+	return False
+
+def clear_all():
+	"""Remove stored snapshots (cache clearing)."""
+	try:
+		folder = _cache_dir()
+		for name in os.listdir(folder):
+			if name.endswith('.pkl'):
+				try: os.remove(os.path.join(folder, name))
+				except Exception: pass
+	except Exception: pass
+	invalidate('cleared')

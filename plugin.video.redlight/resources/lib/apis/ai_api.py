@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from apis import google_api, groq_api
 from apis.tmdb_api import tmdb_movies_search, tmdb_tv_search
 from caches.base_cache import get_timestamp

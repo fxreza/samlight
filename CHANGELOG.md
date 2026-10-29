@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.11.2.1] - 2026-10-29
+
+- Faster Home screen on the Fire TV. Each Samlight widget on Home now keeps a snapshot of what it last showed and replays it when Kodi asks again (every time Home opens, a video starts or a video stops), instead of rebuilding the list from scratch in a fresh Python interpreter. A replay costs the interpreter start and little else; the measured rebuilds were 5 to 12 seconds per widget, several at once. Snapshots are dropped the moment the addon changes anything they show: a watched mark, a resume point, a list change, a setting, a playback stop, a cache clear. They also expire after 20 minutes so newly aired episodes still appear.
+- Next episode without the gap. The next episode's player now starts about 30 seconds before the end of the current one (was 4), resolves its link quietly behind the playing video, and switches the moment the credits end. Before, the switch waited for a cold start plus the resolve after the screen had already dropped to Home, about 15 seconds on the Fire TV, and looked like a new source search. Pressing Stop in those last 30 seconds now stops; the waiting player stands down instead of playing the next episode.
+- Faster start-up. Home widgets that open while the Samlight service is still starting no longer each load the whole settings set and run the settings sync themselves. At boot three widgets took 12 to 16 seconds and two were abandoned by Kodi.
+- Lighter plugin starts. The network library and the HTTP sessions of the Trakt, Simkl, MDBList, PunchPlay, TMDb, debrid and other APIs are only loaded at the first network call. A menu or widget served from cache no longer pays for them; that was about half of a listing's import time.
+- Reuse Language Invoker stays off. The Fire TV log showed Kodi itself crashing when Home asked for several widgets while a reused interpreter was shutting down, with every addon that uses it.
+
 ## [2.11.1.1] - 2026-10-29
 
 - The shared watched file is now compressed. A 24,000-entry history went from 1 MB to about 150 KB.

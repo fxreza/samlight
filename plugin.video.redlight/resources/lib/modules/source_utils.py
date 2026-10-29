@@ -3,7 +3,8 @@ import re
 import json
 import base64
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from threading import Thread
 from urllib.parse import unquote, unquote_plus
 from caches.settings_cache import get_setting

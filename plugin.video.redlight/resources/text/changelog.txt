@@ -1,3 +1,9 @@
+[COLOR red][B]Version 2.11.2[/B][/COLOR]
+- [B]Speed[/B]: Home widgets keep a snapshot of what they last showed and replay it when Kodi asks again (Home opening, a video starting or stopping), instead of rebuilding in a fresh interpreter. Snapshots are dropped whenever the addon changes what they show and expire after 20 minutes.
+- [B]Next Episode[/B]: the next episode's player starts about 30 seconds before the end, resolves its link behind the playing video and switches the moment the credits end. No more drop to Home and no "searching" screen between episodes. Stop in those last seconds still stops.
+- [B]Speed[/B]: widgets that open while the service is still starting no longer load the settings and run the settings sync themselves.
+- [B]Speed[/B]: the network library and the API sessions are only loaded at the first network call, which halves a listing's import time.
+
 [COLOR red][B]Version 2.11.1[/B][/COLOR]
 - [B]Watched Sync[/B]: the shared file is now compressed, about 150 KB instead of 1 MB for a 24,000-entry history. A pull only downloads it when GitHub reports that it changed; a quiet hour costs one tiny request. A device still on 2.11.0 keeps working: its plain file is read and merged until it has been untouched for a week.
 

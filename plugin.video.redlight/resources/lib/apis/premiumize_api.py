@@ -2,7 +2,8 @@
 import re
 import json
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from threading import Thread
 from urllib.parse import urlencode, urlparse
 from caches.main_cache import cache_object

@@ -573,6 +573,13 @@ def nextep_pipeline_headroom(play_type, scraper_time, still_watching_due=False):
 		headroom = max(headroom, NEXTEP_AUTOSCRAPE_MIN_HEADROOM_SEC)
 	return headroom
 
+def nextep_early_play_seconds():
+	"""How long before the end the next episode's player is started. It resolves its link in that
+	time and then waits for the credits to finish, so the switch is immediate. A Fire TV needs
+	about 10 s to start the interpreter and load the playback modules; 30 s leaves room."""
+	try: return max(5, int(get_setting('redlight.nextep_early_play_seconds', '30')))
+	except: return 30
+
 def auto_nextep_settings(play_type):
 	play_type = 'autoplay' if play_type == 'autoplay_nextep' else 'autoscrape'
 	window_percentage = 100 - int(get_setting('redlight.%s_next_window_percentage' % play_type, '95'))

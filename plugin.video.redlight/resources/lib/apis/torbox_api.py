@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from datetime import datetime, timezone
 from threading import Thread
 from urllib.parse import urlencode
@@ -8,11 +9,11 @@ from caches.settings_cache import get_setting, set_setting
 from caches.main_cache import cache_object
 from modules.source_utils import supported_video_extensions, seas_ep_filter, extras
 from modules.utils import copy2clip, make_qrcode
-from modules.kodi_utils import make_session, ok_dialog, notification, confirm_dialog, progress_dialog, sleep
+from modules.kodi_utils import lazy_session, ok_dialog, notification, confirm_dialog, progress_dialog, sleep
 # from modules.kodi_utils import logger
 
 base_url = 'https://api.torbox.app/v1/api/'
-session = make_session(base_url)
+session = lazy_session(base_url)
 
 
 def _to_int(value, default=0):

@@ -5,7 +5,8 @@ import os
 import re
 import time
 import uuid
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from threading import Lock
 from urllib.parse import unquote
 from caches.settings_cache import get_setting, set_setting

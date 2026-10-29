@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from threading import Thread, Semaphore
 from caches.main_cache import cache_object
 from caches.settings_cache import get_setting, set_setting

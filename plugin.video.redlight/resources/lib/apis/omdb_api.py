@@ -3,10 +3,10 @@ from xml.dom.minidom import parseString as mdParse
 from caches.meta_cache import meta_cache
 from modules.metadata import movie_expiry, tvshow_expiry
 from modules.utils import get_datetime, get_current_timestamp
-from modules.kodi_utils import make_session
+from modules.kodi_utils import lazy_session
 # from modules.kodi_utils import logger
 
-session = make_session('http://www.omdbapi.com/')
+session = lazy_session('http://www.omdbapi.com/')
 
 class OMDbAPI:
 	def fetch_info(self, meta, api_key):

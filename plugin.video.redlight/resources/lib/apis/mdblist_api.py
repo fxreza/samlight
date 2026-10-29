@@ -2,7 +2,8 @@
 import json
 import re
 import time
-import requests
+from modules.kodi_utils import LazyRequests
+requests = LazyRequests()
 from urllib.parse import quote, unquote, urlencode
 from caches import mdblist_cache
 from caches.settings_cache import get_setting, set_setting
@@ -19,8 +20,11 @@ BASE_URL = 'https://api.mdblist.com/%s'
 _OAUTH_DEVICE_URL = 'https://api.mdblist.com/oauth/device-authorization/'
 _OAUTH_TOKEN_URL = 'https://api.mdblist.com/oauth/token/'
 MAX_LIST_ITEMS = 250_000
-session = requests.Session()
-session.mount('https://api.mdblist.com', requests.adapters.HTTPAdapter(pool_maxsize=100, max_retries=meta_status_retry()))
+def _make_mdblist_session():
+	made = requests.Session()
+	made.mount('https://api.mdblist.com', requests.adapters.HTTPAdapter(pool_maxsize=100, max_retries=meta_status_retry()))
+	return made
+session = kodi_utils.LazySession(_make_mdblist_session)
 
 def _mdblist_token():
 	from caches.settings_cache import settings_cache

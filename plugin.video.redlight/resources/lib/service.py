@@ -313,6 +313,8 @@ class RedLightMonitor(Monitor):
 		self.startServices()
 
 	def startServices(self):
+		# Seen by plugin calls that start in the same seconds: the service owns the settings sync.
+		kodi_utils.set_property('redlight.service_started', str(time()))
 		try: SetAddonConstants().run()
 		except Exception as e: kodi_utils.logger('SetAddonConstants', str(e))
 		try: DatabaseMaintenance().run()
