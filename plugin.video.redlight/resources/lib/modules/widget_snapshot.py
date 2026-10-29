@@ -35,8 +35,20 @@ GENERATION_PROP = 'redlight.widget_generation'
 PLAYBACK_END_AT_PROP = 'redlight.playback_end_at'
 # Set when a stale snapshot was replayed: playback_widget_check then refreshes Home once.
 REFRESH_NEEDED_PROP = 'redlight.widget_refresh_needed'
+# The progress save after a stop lands before the player callback; either one opens the grace.
+PLAYBACK_SAVED_AT_PROP = 'redlight.playback_widget_refresh_at'
+# Set by an explicit refresh (kodi_refresh): grace timestamps older than this no longer count,
+# otherwise the refresh's own widget requests would replay the stale snapshot again.
+GRACE_CLOSED_AT_PROP = 'redlight.widget_grace_closed_at'
 _STALE_GRACE_SEC = 15
 _STALE_MAX_AGE_SEC = 6 * 3600
+# Widget rebuilds run one at a time (a lock file in the cache folder): five at once starved
+# the user's own navigation on a Fire TV. A rebuild that outlives the stale limit is presumed dead.
+_REBUILD_LOCK = 'rebuild.lock'
+_LOCK_STALE_SEC = 40
+_LOCK_WAIT_MAX_SEC = 90
+# A widget that already has a snapshot stops waiting for its turn after this and replays it.
+_STALE_FALLBACK_WAIT_SEC = 30
 _GENERATION_FILE = 'widget_generation'
 _CACHE_DIR = 'widget_cache'
 _FORMAT = 2
@@ -53,7 +65,7 @@ SNAPSHOT_MODES = frozenset((
 _NO_SNAPSHOT_PARAMS = ('random', 'shuffle', 'random_support', 'random_continual')
 _TAG_GETTERS = ('getVideoInfoTag', 'getMusicInfoTag')
 
-_state = {'key': None, 'ops': [], 'items': 0, 'failed': False}
+_state = {'key': None, 'ops': [], 'items': 0, 'failed': False, 'locked': False}
 
 def _window():
 	return xbmcgui.Window(10000)
@@ -121,7 +133,9 @@ def note_playback_end():
 	except Exception: pass
 
 def clear_playback_end_grace():
-	try: _window().clearProperty(PLAYBACK_END_AT_PROP)
+	try:
+		_window().clearProperty(PLAYBACK_END_AT_PROP)
+		_window().setProperty(GRACE_CLOSED_AT_PROP, str(time.time()))
 	except Exception: pass
 
 def refresh_needed():
@@ -139,11 +153,66 @@ def _stale_replay_allowed():
 		if xbmc.Player().isPlayingVideo(): return True
 	except Exception:
 		pass
-	try:
-		ended = float(_window().getProperty(PLAYBACK_END_AT_PROP) or 0)
-		return ended > 0 and 0 <= time.time() - ended < _STALE_GRACE_SEC
-	except Exception:
-		return False
+	window, now = _window(), time.time()
+	try: closed = float(window.getProperty(GRACE_CLOSED_AT_PROP) or 0)
+	except Exception: closed = 0
+	for prop in (PLAYBACK_END_AT_PROP, PLAYBACK_SAVED_AT_PROP):
+		try:
+			at = float(window.getProperty(prop) or 0)
+			if at > closed and 0 <= now - at < _STALE_GRACE_SEC: return True
+		except Exception:
+			pass
+	return False
+
+def user_inside_addon():
+	"""The user is browsing a Red Light list: background widget rebuilds must not compete."""
+	try: return 'plugin.video.redlight' in xbmc.getInfoLabel('Container.PluginName')
+	except Exception: return False
+
+def _lock_path():
+	return os.path.join(_cache_dir(), _REBUILD_LOCK)
+
+def _try_lock():
+	path = _lock_path()
+	for _ in range(2):
+		try:
+			fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+			os.write(fd, str(time.time()).encode('utf-8'))
+			os.close(fd)
+			_state['locked'] = True
+			return True
+		except FileExistsError:
+			try:
+				if time.time() - os.path.getmtime(path) > _LOCK_STALE_SEC:
+					os.remove(path)
+					continue
+			except Exception:
+				pass
+			return False
+		except Exception:
+			# Cannot lock at all (read-only profile?): never block a build on it.
+			return True
+	return False
+
+def _release_lock():
+	if not _state.get('locked'): return
+	_state['locked'] = False
+	try: os.remove(_lock_path())
+	except Exception: pass
+
+def _wait_for_rebuild_turn(key, have_snapshot):
+	"""Returns 'locked' (build now), 'fresh' (a sibling just built this widget: replay it),
+	'stale' (replay the old snapshot, the rebuild waits for a later Home visit) or 'nolock'."""
+	if have_snapshot and user_inside_addon(): return 'stale'
+	started = time.time()
+	while True:
+		if _try_lock(): return 'locked'
+		data, fresh = _load(key)
+		if data and fresh: return 'fresh'
+		waited = time.time() - started
+		if have_snapshot and (user_inside_addon() or waited > _STALE_FALLBACK_WAIT_SEC): return 'stale'
+		if waited > _LOCK_WAIT_MAX_SEC: return 'nolock'
+		xbmc.sleep(250)
 
 def is_widget_request(argv):
 	"""A directory request from outside the addon: a Home widget, or the first step in from Home."""
@@ -181,9 +250,12 @@ def recording():
 
 def begin(key):
 	_state['key'], _state['ops'], _state['items'], _state['failed'] = key, [], 0, False
+	try: _window().clearProperty(REFRESH_NEEDED_PROP)
+	except Exception: pass
 
 def abandon():
 	_state['key'], _state['ops'], _state['items'], _state['failed'] = None, [], 0, False
+	_release_lock()
 
 def _plain(value):
 	"""Make call arguments picklable. xbmc.Actor objects become tagged tuples."""
@@ -265,18 +337,19 @@ def record_end(update_listing, cache_to_disc):
 	if not recording(): return
 	_state['ops'].append(('end', bool(update_listing), bool(cache_to_disc)))
 	key, ops, count = _state['key'], _state['ops'], _state['items']
+	if count > 0:
+		data = {'format': _FORMAT, 'key': key, 'generation': current_generation(), 'time': time.time(),
+				'version': _addon_version(), 'ops': ops}
+		try:
+			payload = pickle.dumps(data, protocol=2)
+			path = _path(key)
+			tmp = '%s.%s.tmp' % (path, os.getpid())
+			with open(tmp, 'wb') as handle: handle.write(payload)
+			os.replace(tmp, path)
+		except Exception as error:
+			_log('store failed: %s' % error)
+	# Stored first, released second: a sibling waiting for its turn then replays this snapshot.
 	abandon()
-	if count <= 0: return
-	data = {'format': _FORMAT, 'key': key, 'generation': current_generation(), 'time': time.time(),
-			'version': _addon_version(), 'ops': ops}
-	try:
-		payload = pickle.dumps(data, protocol=2)
-		path = _path(key)
-		tmp = '%s.%s.tmp' % (path, os.getpid())
-		with open(tmp, 'wb') as handle: handle.write(payload)
-		os.replace(tmp, path)
-	except Exception as error:
-		_log('store failed: %s' % error)
 
 # ------------------------------------------------------------------ replay
 
@@ -345,11 +418,20 @@ def try_replay(argv, mode, params):
 	try:
 		if not is_widget_request(argv) or not eligible(mode, params): return False
 		key = make_key(argv)
-		outcome = replay(int(argv[1]), key, allow_stale=_stale_replay_allowed())
+		handle = int(argv[1])
+		outcome = replay(handle, key, allow_stale=_stale_replay_allowed() or user_inside_addon())
 		if outcome:
 			_log('replayed %s%s' % (mode, '' if outcome == 'fresh' else ' (stale, refresh follows)'))
 			return True
+		data, fresh = _load(key)
+		turn = _wait_for_rebuild_turn(key, data is not None)
+		if turn in ('fresh', 'stale'):
+			outcome = replay(handle, key, allow_stale=True)
+			if outcome:
+				_log('replayed %s after waiting (%s)' % (mode, 'a sibling rebuilt it' if outcome == 'fresh' else 'stale, refresh follows'))
+				return True
 		begin(key)
+		if turn == 'locked': _state['locked'] = True
 	except Exception as error:
 		_log('skipped: %s' % error)
 		abandon()
@@ -360,7 +442,7 @@ def clear_all():
 	try:
 		folder = _cache_dir()
 		for name in os.listdir(folder):
-			if name.endswith('.pkl'):
+			if name.endswith('.pkl') or name == _REBUILD_LOCK:
 				try: os.remove(os.path.join(folder, name))
 				except Exception: pass
 	except Exception: pass

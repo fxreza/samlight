@@ -1,3 +1,7 @@
+[COLOR red][B]Version 2.11.4[/B][/COLOR]
+- [B]Speed[/B]: opening Samlight right after a stop is no longer slow. Widget rebuilds after a stop run one at a time, a repeated request reuses the first result, and no rebuild starts while you browse inside Samlight.
+- [B]Speed[/B]: after a stop, Home widgets replay their snapshot in every case; the replay window now also opens from the progress save, not only the player's stop callback.
+
 [COLOR red][B]Version 2.11.3[/B][/COLOR]
 - [B]Speed[/B]: after a stop, Home widgets replay their last snapshot at once and refresh themselves once a few seconds later. Widgets are never rebuilt while a video plays.
 - [B]Next Episodes[/B]: the widget no longer shows a modal busy spinner over Home while it rebuilds.

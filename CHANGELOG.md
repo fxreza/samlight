@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.11.4.1] - 2026-10-29
+
+- Opening Samlight right after a stop is no longer slow. The widget rebuilds that follow a stop now run one at a time instead of five at once, a second request for the same widget reuses the first one's result instead of rebuilding again, and no rebuild starts while you are browsing inside Samlight; those wait for your next return to Home. On the Fire TV, five parallel rebuilds (two of them Next Episodes at 13 and 18 s) were starving the menu you had just opened.
+- After a stop, Home widgets replay their snapshot in every case now. 2.11.3 keyed the replay window on the player's stop callback, which Kodi delivered too late on the Fire TV; the window now also opens from the progress save, which always lands first.
+
 ## [2.11.3.1] - 2026-10-29
 
 - Home after a stop: the widgets now replay their last snapshot at once, even when the stop just changed what they show, and refresh themselves once a few seconds later. In 2.11.2 the stop invalidated them first, so Home still waited for a full rebuild.
