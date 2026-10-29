@@ -1,3 +1,6 @@
+[COLOR red][B]Version 2.11.1[/B][/COLOR]
+- [B]Watched Sync[/B]: the shared file is now compressed, about 150 KB instead of 1 MB for a 24,000-entry history. A pull only downloads it when GitHub reports that it changed; a quiet hour costs one tiny request. A device still on 2.11.0 keeps working: its plain file is read and merged until it has been untouched for a week.
+
 [COLOR red][B]Version 2.11.0[/B][/COLOR]
 - [B]Watched Sync[/B]: watched marks for movies and episodes, and dropped TV shows, are now shared between devices through the Cloud Backup GitHub repository, one file for all devices. Your own marks go out about a minute after the last one; other devices' marks come in at start-up and every hour, never during playback. Newest change wins. Resume points stay on each device.
 - [B]Settings[/B]: General > Cloud Backup > Sync Watched Status Between Devices (on by default, uses the Cloud Backup token and repository), Pull Every (minutes), Last Sync. Tools > Import & Export > Sync Watched Status Now.

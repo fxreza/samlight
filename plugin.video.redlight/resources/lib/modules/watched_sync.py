@@ -20,14 +20,25 @@ Every entry: [state, time, title] where state is 1 (watched / dropped) or 0 (unw
 d:<tmdb>.
 """
 
+import calendar
+import gzip
 import json
 import os
 import time
 
-SYNC_FILE = 'watched-sync.json'
+# Gzipped JSON: a 24,000-entry history is about 1 MB plain and a few hundred KB
+# compressed, which keeps every pull one small request.
+SYNC_FILE = 'watched-sync.json.gz'
+# The plain file 2.11.0 wrote. Read and merged while it exists, so a device still on
+# that version is not cut off; deleted once nothing has touched it for a week.
+LEGACY_FILE = 'watched-sync.json'
+LEGACY_STALE_DAYS = 7
 PENDING_NAME = 'watched_sync.pending'
 PROCESSING_NAME = 'watched_sync.processing'
 STATE_NAME = 'watched_sync.json'
+# Copy of the shared file from the last sync: stands in for a download when GitHub
+# says the file has not changed since.
+CACHE_NAME = 'watched_sync.cache'
 HIDDEN_KEY = 'hidden_progress_items'
 RUNNING_PROP = 'redlight.watched_sync_running'
 # A tombstone (unwatched / undropped) this old no longer protects anything: every
@@ -232,15 +243,23 @@ def _empty_remote():
 	return {'v': 1, 'items': {}}
 
 def _parse_remote(raw):
+	"""Plain or gzipped JSON; anything unreadable counts as empty."""
 	if not raw: return _empty_remote()
 	try:
+		if isinstance(raw, bytes) and raw[:2] == b'\x1f\x8b': raw = gzip.decompress(raw)
 		data = json.loads(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
 		if isinstance(data, dict) and isinstance(data.get('items'), dict): return data
 	except Exception: pass
 	return _empty_remote()
 
 def _serialize(data):
-	return json.dumps(data, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+	plain = json.dumps(data, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+	# mtime=0 so the same content always gives the same bytes.
+	return gzip.compress(plain, compresslevel=9, mtime=0)
+
+def _updated_epoch(data):
+	try: return calendar.timegm(time.strptime(data.get('updated', '')[:19], '%Y-%m-%dT%H:%M:%S'))
+	except Exception: return 0
 
 
 # ---------------------------------------------------------------- merge (pure)
@@ -342,8 +361,36 @@ def _fail(code, message):
 	_write_state(state)
 	return code, message
 
+def _read_cache():
+	try:
+		with open(_path(CACHE_NAME), 'rb') as fh: return fh.read()
+	except Exception: return None
+
+def _write_cache(data):
+	try:
+		path = _path(CACHE_NAME)
+		with open(path + '.tmp', 'wb') as fh: fh.write(data)
+		os.replace(path + '.tmp', path)
+	except Exception: pass
+
+def _changed_check(gh, cfg, state):
+	"""One small request: the repository's file list with each file's hash. Returns
+	(known, gz_sha, legacy_sha, gz_unchanged, legacy_unchanged). known is False when the
+	listing could not be read, in which case the caller downloads as usual."""
+	ok, listing = gh.list_contents(cfg)
+	if not ok: return False, None, None, False, False
+	gz_sha, legacy_sha = listing.get(SYNC_FILE), listing.get(LEGACY_FILE)
+	gz_unchanged = bool(gz_sha) and gz_sha == state.get('sha') and _read_cache() is not None
+	legacy_unchanged = legacy_sha == state.get('legacy_sha')
+	return True, gz_sha, legacy_sha, gz_unchanged, legacy_unchanged
+
 def run_sync(silent=True, reason='timer'):
-	"""Pull, merge, apply, push. Dialog-free. Returns (status, message). Never raises."""
+	"""Pull, merge, apply, push. Dialog-free. Returns (status, message). Never raises.
+
+	The pull starts with the repository's file list, which carries every file's hash.
+	When the shared file's hash is the one from our last sync and nothing is pending,
+	there is nothing to do and nothing is downloaded. When something is pending but the
+	hash is unchanged, the copy kept from the last sync stands in for the download."""
 	from modules import kodi_utils
 	from caches.settings_cache import set_setting
 	from caches.base_cache import connect_database
@@ -361,31 +408,60 @@ def run_sync(silent=True, reason='timer'):
 		pending = _take_pending()
 		state = _read_state()
 		dbcon = connect_database('watched_db')
+		pulled = pushed = 0
 		for attempt in (1, 2):
-			ok, remote = gh.get_contents(cfg, SYNC_FILE)
-			if not ok: return _fail(remote['code'], remote['message'])
+			known, gz_sha, legacy_sha, gz_unchanged, legacy_unchanged = _changed_check(gh, cfg, state) if attempt == 1 else (False, None, None, False, False)
+			if known and gz_unchanged and legacy_unchanged and not pending:
+				message = 'Nothing changed anywhere.'
+				break
+			if known and gz_unchanged:
+				remote = {'sha': gz_sha, 'data': _read_cache()}
+			else:
+				ok, remote = gh.get_contents(cfg, SYNC_FILE)
+				if not ok: return _fail(remote['code'], remote['message'])
 			remote_data = _parse_remote(remote['data'])
 			remote_items = remote_data.get('items') or {}
+			base_items = remote_items
+			# A device still on 2.11.0 writes the plain file. Its changes count like our own
+			# pending ones: newest wins, and they are carried into the compressed file by
+			# the push below. Once nobody has written it for a week it goes.
+			legacy_present = legacy_sha if known else True
+			if legacy_present and not (known and legacy_unchanged):
+				ok, legacy = gh.get_contents(cfg, LEGACY_FILE)
+				if ok and legacy.get('data'):
+					legacy_data = _parse_remote(legacy['data'])
+					base_items = merge(remote_items, legacy_data.get('items') or {}, {})
+					state['legacy_sha'], state['legacy_updated'] = legacy.get('sha'), _updated_epoch(legacy_data)
+				else:
+					state['legacy_sha'], state['legacy_updated'] = None, 0
+			if legacy_present and state.get('legacy_sha') and time.time() - (state.get('legacy_updated') or 0) > LEGACY_STALE_DAYS * 86400:
+				ok, _result = gh.delete_contents(cfg, LEGACY_FILE, 'Watched sync: remove the uncompressed file', state['legacy_sha'])
+				if ok: state['legacy_sha'], state['legacy_updated'] = None, 0
 			local_items, local_dropped = _local_snapshot(dbcon)
-			merged = merge(remote_items, pending, local_items)
+			merged = merge(base_items, pending, local_items)
 			pulled = _apply(dbcon, merged, local_items, local_dropped)
 			pushed = sum(1 for k, v in merged.items() if remote_items.get(k) != v)
 			if merged != remote_items:
 				payload = {'v': 1, 'items': merged, 'updated': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'by': _device_name()}
-				ok, result = gh.put_contents(cfg, SYNC_FILE, _serialize(payload),
-											'Watched sync from %s' % _device_name(), sha=remote.get('sha'))
+				blob = _serialize(payload)
+				ok, result = gh.put_contents(cfg, SYNC_FILE, blob, 'Watched sync from %s' % _device_name(), sha=remote.get('sha'))
 				if not ok:
 					if result['code'] in ('conflict', 'invalid_repo') and attempt == 1:
 						# Another device pushed between our pull and our push: pull again and redo.
 						continue
 					return _fail(result['code'], result['message'])
+				state['sha'] = result
+				_write_cache(blob)
+			else:
+				state['sha'] = remote.get('sha')
+				if remote.get('data'): _write_cache(remote['data'])
+			message = 'Applied %s change%s from other devices, sent %s.' % (pulled, '' if pulled == 1 else 's', pushed)
 			break
 		_clear_processing()
 		now = int(time.time())
 		state.update({'last_run': now, 'retry_after': 0})
 		_write_state(state)
 		set_setting('watched_sync.last_status', 'OK %s' % time.strftime('%d %b %H:%M'))
-		message = 'Applied %s change%s from other devices, sent %s.' % (pulled, '' if pulled == 1 else 's', pushed)
 		kodi_utils.logger('Watched Sync', '%s (%s)' % (message, reason))
 		if pulled and reason != 'manual': kodi_utils.kodi_refresh()
 		return 'success', message

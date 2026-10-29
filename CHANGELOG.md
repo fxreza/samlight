@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.11.1.1] - 2026-10-29
+
+- The shared watched file is now compressed. A 24,000-entry history went from 1 MB to about 150 KB.
+- A pull first asks GitHub for the repository's file list, about a kilobyte, and only downloads the shared file when its hash has moved. A quiet hour costs one tiny request and nothing else; a mark made here while nothing changed elsewhere is sent from the copy kept at the last sync, with no download.
+- Changeover: a device still on 2.11.0 keeps writing the old plain file, and newer devices read and merge it on every sync until nobody has written it for a week, then remove it. Nothing is lost while the two devices are on different versions.
+
 ## [2.11.0.1] - 2026-10-29
 
 - Watched status now follows you between devices. Watched marks for movies and episodes, and dropped TV shows, are shared through the Cloud Backup GitHub repository in one file for all devices, so what you watch on the Mac shows as watched on the Fire Stick and the other way round. Your own marks are sent about a minute after the last one; other devices' marks are pulled at start-up and every hour, never while a video plays or in the 90 seconds after it stops. When both devices change the same title, the newest change wins. The first sync takes the union of every device's history.

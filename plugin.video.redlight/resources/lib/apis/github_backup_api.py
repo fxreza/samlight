@@ -231,3 +231,22 @@ def put_contents(cfg, path, data, message, sha=None):
 	if not ok: return ok, result
 	try: return True, (result.json().get('content') or {}).get('sha')
 	except Exception: return True, None
+
+
+def delete_contents(cfg, path, message, sha):
+	if not sha: return _fail('error', 'A sha is needed to delete %s.' % path)
+	payload = {'message': message, 'sha': sha}
+	ok, result = _request('DELETE', _contents_url(cfg, path), cfg, headers=_headers(cfg), data=json.dumps(payload))
+	if not ok: return ok, result
+	return True, None
+
+
+def list_contents(cfg, directory=''):
+	"""Names and blob hashes of the files in a directory, as {name: sha}. About a
+	kilobyte for a small repository: the cheap way to ask whether a file changed."""
+	ok, result = _request('GET', _contents_url(cfg, directory).rstrip('/'), cfg, headers=_headers(cfg))
+	if not ok: return ok, result
+	try: body = result.json()
+	except Exception: return _fail('error', 'GitHub returned something that is not JSON.')
+	if not isinstance(body, list): return _fail('error', 'Expected a directory listing.')
+	return True, dict((i.get('name'), i.get('sha')) for i in body if i.get('type') == 'file')
