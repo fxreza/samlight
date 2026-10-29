@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.3.1] - 2026-10-29
+
+- Home after a stop: the widgets now replay their last snapshot at once, even when the stop just changed what they show, and refresh themselves once a few seconds later. In 2.11.2 the stop invalidated them first, so Home still waited for a full rebuild.
+- Widgets are never rebuilt while a video plays. A reload Kodi asks for at playback start replays the snapshot; the rebuild waits for the stop.
+- The Next Episodes widget no longer shows a modal busy spinner over Home while it rebuilds; the spinner stays for the list opened inside the addon.
+- Each listing build is logged with its time, so a Fire TV log shows exactly what a widget cost.
+
 ## [2.11.2.1] - 2026-10-29
 
 - Faster Home screen on the Fire TV. Each Samlight widget on Home now keeps a snapshot of what it last showed and replays it when Kodi asks again (every time Home opens, a video starts or a video stops), instead of rebuilding the list from scratch in a fresh Python interpreter. A replay costs the interpreter start and little else; the measured rebuilds were 5 to 12 seconds per widget, several at once. Snapshots are dropped the moment the addon changes anything they show: a watched mark, a resume point, a list change, a setting, a playback stop, a cache clear. They also expire after 20 minutes so newly aired episodes still appear.

@@ -1,3 +1,8 @@
+[COLOR red][B]Version 2.11.3[/B][/COLOR]
+- [B]Speed[/B]: after a stop, Home widgets replay their last snapshot at once and refresh themselves once a few seconds later. Widgets are never rebuilt while a video plays.
+- [B]Next Episodes[/B]: the widget no longer shows a modal busy spinner over Home while it rebuilds.
+- [B]Log[/B]: each listing build is logged with its time.
+
 [COLOR red][B]Version 2.11.2[/B][/COLOR]
 - [B]Speed[/B]: Home widgets keep a snapshot of what they last showed and replay it when Kodi asks again (Home opening, a video starting or stopping), instead of rebuilding in a fresh interpreter. Snapshots are dropped whenever the addon changes what they show and expire after 20 minutes.
 - [B]Next Episode[/B]: the next episode's player starts about 30 seconds before the end, resolves its link behind the playing video and switches the moment the credits end. No more drop to Home and no "searching" screen between episodes. Stop in those last seconds still stops.

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+from time import time
 from xbmc import getInfoLabel
 from urllib.parse import parse_qsl
 from modules import kodi_utils
@@ -37,7 +38,9 @@ def routing(sys):
 	is_listing = False
 	try:
 		is_listing = int(sys.argv[1]) >= 0 and not mode.startswith('playback')
-		if is_listing: kodi_utils.mark_listing_started()
+		if is_listing:
+			kodi_utils.mark_listing_started()
+			kodi_utils._listing_mode, kodi_utils._listing_started = mode, time()
 	except: pass
 	# A Home widget that was built before and whose data has not changed is replayed from its
 	# snapshot: no metadata or watched modules, no rebuild. Falls through when there is none.

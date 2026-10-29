@@ -532,9 +532,20 @@ def set_category(handle, label):
 	widget_snapshot.record_category(label)
 	xbmcplugin.setPluginCategory(handle, label)
 
+# Set by the router for directory requests; end_directory logs how long the build took.
+_listing_mode, _listing_started = '', 0.0
+
 def end_directory(handle, updateListing=False, cacheToDisc=True):
+	global _listing_started
+	stored = widget_snapshot.recording()
 	widget_snapshot.record_end(updateListing, cacheToDisc)
 	xbmcplugin.endOfDirectory(handle, updateListing=updateListing, cacheToDisc=cacheToDisc)
+	if _listing_started:
+		try:
+			from time import time
+			logger('Red Light', 'Listing %s built in %.1fs%s' % (_listing_mode, time() - _listing_started, ' (snapshot stored)' if stored else ''))
+		except: pass
+		_listing_started = 0.0
 
 # Estuary List (50) is for movies/tvshows content only — not plugin browse folders.
 _ESTUARY_MENU_VIEW_MAP = {'50': '55'}
@@ -835,6 +846,8 @@ def reload_skin():
 
 def kodi_refresh():
 	widget_snapshot.invalidate('library refresh')
+	widget_snapshot.clear_playback_end_grace()
+	widget_snapshot.clear_refresh_needed()
 	execute_builtin('UpdateLibrary(video,special://skin/foo)')
 
 SHUTTING_DOWN_PROP = 'redlight.shutting_down'
@@ -952,13 +965,17 @@ def playback_widget_check():
 	so an open Red Light menu is never reloaded under the user."""
 	if service_shutting_down(): return
 	try:
+		# Never rebuild the widgets under a playing video: the next stop saves again and
+		# schedules a new check.
+		if kodi_player().isPlayingVideo(): return
 		if not home(): return
 		saved = float(get_property(PLAYBACK_WIDGET_REFRESH_PROP) or 0)
 		built = float(get_property(LISTING_STARTED_PROP) or 0)
 	except:
 		return
-	if not saved or built >= saved: return
-	logger('Red Light', 'Home widgets were built before playback saved: refreshing once')
+	stale_replayed = widget_snapshot.refresh_needed()
+	if not stale_replayed and (not saved or built >= saved): return
+	logger('Red Light', 'Home widgets %s: refreshing once' % ('replayed a stale snapshot' if stale_replayed else 'were built before playback saved'))
 	kodi_refresh()
 
 def refresh_widgets(silent=False, reload_skin=False, defer_browsing=False):

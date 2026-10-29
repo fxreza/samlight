@@ -641,9 +641,12 @@ def build_single_episode(list_type, params={}):
 			return
 		# Cold rebuild (#203): Kodi's GetDirectory busy often dies when fullscreen closes after
 		# Stop; keep an explicit spinner until rows are ready (warm cache hits skip this).
-		_nextep_busy = True
-		try: kodi_utils.show_busy_dialog()
-		except: pass
+		# Not for a Home widget: a modal spinner over Home blocked the remote for the whole
+		# rebuild, 10 s on a Fire TV.
+		_nextep_busy = not is_external
+		if _nextep_busy:
+			try: kodi_utils.show_busy_dialog()
+			except: pass
 		try:
 			# Right after Stop, local watched/progress is already written — blocking Simkl/Trakt/etc.
 			# sync is the main wait even with one row. Skip ~30s; monitors / later opens still sync.

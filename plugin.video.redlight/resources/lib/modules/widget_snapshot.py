@@ -30,6 +30,13 @@ import xbmcgui
 import xbmcplugin
 
 GENERATION_PROP = 'redlight.widget_generation'
+# When the last playback ended (player callback). Widget requests in the seconds after a stop
+# replay their last snapshot even if stale, so Home appears at once; one refresh follows.
+PLAYBACK_END_AT_PROP = 'redlight.playback_end_at'
+# Set when a stale snapshot was replayed: playback_widget_check then refreshes Home once.
+REFRESH_NEEDED_PROP = 'redlight.widget_refresh_needed'
+_STALE_GRACE_SEC = 15
+_STALE_MAX_AGE_SEC = 6 * 3600
 _GENERATION_FILE = 'widget_generation'
 _CACHE_DIR = 'widget_cache'
 _FORMAT = 2
@@ -108,6 +115,35 @@ def invalidate(reason=''):
 		with open(_generation_file(), 'w') as handle: handle.write(new_value)
 	except Exception: pass
 	if reason: _log('invalidated (%s)' % reason)
+
+def note_playback_end():
+	try: _window().setProperty(PLAYBACK_END_AT_PROP, str(time.time()))
+	except Exception: pass
+
+def clear_playback_end_grace():
+	try: _window().clearProperty(PLAYBACK_END_AT_PROP)
+	except Exception: pass
+
+def refresh_needed():
+	return _window().getProperty(REFRESH_NEEDED_PROP) == 'true'
+
+def clear_refresh_needed():
+	try: _window().clearProperty(REFRESH_NEEDED_PROP)
+	except Exception: pass
+
+def _stale_replay_allowed():
+	"""A stale snapshot may stand in while a video plays (Home is not visible, and a rebuild
+	would steal the CPU from the video) and in the first seconds after a playback end (Home
+	is being drawn; the refresh scheduled by the progress save rebuilds it right after)."""
+	try:
+		if xbmc.Player().isPlayingVideo(): return True
+	except Exception:
+		pass
+	try:
+		ended = float(_window().getProperty(PLAYBACK_END_AT_PROP) or 0)
+		return ended > 0 and 0 <= time.time() - ended < _STALE_GRACE_SEC
+	except Exception:
+		return False
 
 def is_widget_request(argv):
 	"""A directory request from outside the addon: a Home widget, or the first step in from Home."""
@@ -245,19 +281,21 @@ def record_end(update_listing, cache_to_disc):
 # ------------------------------------------------------------------ replay
 
 def _load(key):
+	"""Returns (data, fresh). data is None when there is nothing usable at all."""
 	path = _path(key)
 	try:
-		if not os.path.isfile(path): return None
+		if not os.path.isfile(path): return None, False
 		with open(path, 'rb') as handle: data = pickle.load(handle)
 	except Exception:
 		try: os.remove(path)
 		except Exception: pass
-		return None
-	if not isinstance(data, dict) or data.get('format') != _FORMAT or data.get('key') != key: return None
-	if data.get('version') != _addon_version(): return None
-	if data.get('generation') != current_generation(): return None
-	if time.time() - float(data.get('time', 0)) > ttl_seconds(): return None
-	return data
+		return None, False
+	if not isinstance(data, dict) or data.get('format') != _FORMAT or data.get('key') != key: return None, False
+	if data.get('version') != _addon_version(): return None, False
+	age = time.time() - float(data.get('time', 0))
+	if age > _STALE_MAX_AGE_SEC: return None, False
+	fresh = data.get('generation') == current_generation() and age <= ttl_seconds()
+	return data, fresh
 
 def _build(ops):
 	offscreen = True
@@ -277,10 +315,14 @@ def _apply(target, ops):
 		try: getattr(target, name)(*_restore(op[1]), **_restore(op[2]))
 		except Exception: pass
 
-def replay(handle, key):
-	"""Send a stored listing to Kodi. Returns False when there is nothing fresh to replay."""
-	data = _load(key)
+def replay(handle, key, allow_stale=False):
+	"""Send a stored listing to Kodi. Returns 'fresh', 'stale' or False (nothing to replay)."""
+	data, fresh = _load(key)
 	if not data: return False
+	if not fresh:
+		if not allow_stale: return False
+		try: _window().setProperty(REFRESH_NEEDED_PROP, 'true')
+		except Exception: pass
 	sort_methods = {'episodes': 24, 'files': 5, 'label': 2, 'none': 0}
 	try:
 		for op in data['ops']:
@@ -296,15 +338,16 @@ def replay(handle, key):
 		try: os.remove(_path(key))
 		except Exception: pass
 		return False
-	return True
+	return 'fresh' if fresh else 'stale'
 
 def try_replay(argv, mode, params):
 	"""Entry point for the router: True when the request was answered from a snapshot."""
 	try:
 		if not is_widget_request(argv) or not eligible(mode, params): return False
 		key = make_key(argv)
-		if replay(int(argv[1]), key):
-			_log('replayed %s' % mode)
+		outcome = replay(int(argv[1]), key, allow_stale=_stale_replay_allowed())
+		if outcome:
+			_log('replayed %s%s' % (mode, '' if outcome == 'fresh' else ' (stale, refresh follows)'))
 			return True
 		begin(key)
 	except Exception as error:
