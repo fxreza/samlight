@@ -1,3 +1,6 @@
+[COLOR red][B]Version 2.11.5[/B][/COLOR]
+- [B]Watched Sync[/B]: other devices' marks come in 45 seconds after Kodi starts and a few seconds after every wake from the screensaver or sleep, not only on the hourly timer. Never during playback.
+
 [COLOR red][B]Version 2.11.4[/B][/COLOR]
 - [B]Speed[/B]: opening Samlight right after a stop is no longer slow. Widget rebuilds after a stop run one at a time, a repeated request reuses the first result, and no rebuild starts while you browse inside Samlight.
 - [B]Speed[/B]: after a stop, Home widgets replay their snapshot in every case; the replay window now also opens from the progress save, not only the player's stop callback.

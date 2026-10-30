@@ -13,7 +13,8 @@ already share their status through their own servers.
 Marks are appended to a pending file as they happen (one JSON line each, append-only,
 so the plugin process and the service never fight over a read-modify-write). The
 service folds the pending lines into the shared file about a minute after the last
-mark, pulls other devices' changes every hour, and on start.
+mark, and pulls other devices' changes 45 seconds after Kodi starts, a few seconds
+after every wake, and every hour.
 
 Every entry: [state, time, title] where state is 1 (watched / dropped) or 0 (unwatched
 / undropped), time is unix seconds. Keys: m:<tmdb>, e:<tmdb>:<season>:<episode>,

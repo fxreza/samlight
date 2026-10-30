@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.11.5.1] - 2026-10-30
+
+- Watched sync pulls other devices' marks when you start using a device, not only on the hourly timer. The first pull runs 45 seconds after Kodi starts (was 150, and it was skipped when the last sync was under an hour old), and a pull runs about 5 seconds after the screensaver ends or the device wakes, including a Fire TV that suspended Kodi without a wake notice. These pulls do not wait for the remote to go idle; they still never run during playback or in the 90 seconds after it, and are skipped when a sync ran in the last minute. The hourly pull stays as a backup.
+
 ## [2.11.4.1] - 2026-10-29
 
 - Opening Samlight right after a stop is no longer slow. The widget rebuilds that follow a stop now run one at a time instead of five at once, a second request for the same widget reuses the first one's result instead of rebuilding again, and no rebuild starts while you are browsing inside Samlight; those wait for your next return to Home. On the Fire TV, five parallel rebuilds (two of them Next Episodes at 13 and 18 s) were starving the menu you had just opened.

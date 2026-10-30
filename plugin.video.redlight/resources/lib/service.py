@@ -8,6 +8,7 @@ from caches.settings_cache import get_setting, sync_settings
 from modules import kodi_utils
 
 pause_services_prop = 'redlight.pause_services'
+watched_sync_wake_prop = 'redlight.watched_sync_wake'
 current_skin_prop = 'redlight.current_skin'
 
 def _start_daemon(target):
@@ -271,6 +272,17 @@ class WatchedSyncMonitor:
 	idle_needed = 20
 	# Seconds after playback stops before any sync: the widgets rebuild first.
 	after_playback = 90
+	# Seconds after Kodi starts before the first pull: the start-up load is done in
+	# about 30.
+	start_delay = 45
+	# Seconds after a wake before the pull, so wifi can reconnect first.
+	wake_delay = 5
+	# A start or wake pull is skipped when a sync ran this recently.
+	repull_seconds = 60
+	tick = 20
+	# A tick that takes this long means the device was asleep: a Fire TV suspends Kodi
+	# without always sending a wake notice.
+	sleep_gap = 120
 
 	def run(self, monitor):
 		kodi_utils.logger('Red Light', 'WatchedSyncMonitor Service Starting')
@@ -278,24 +290,39 @@ class WatchedSyncMonitor:
 		from modules import watched_sync
 		player = kodi_utils.kodi_player()
 		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
-		# After the boot storm, but before the daily backup: the start-up pull is what
-		# brings the other device's marks over.
-		wait_for_abort(150)
+		wait_for_abort(self.start_delay)
 		last_playing = 0
+		# Someone who just started or woke the device is about to look at the lists, so
+		# both pull straight away instead of waiting for the hourly timer.
+		pull_reason = 'startup'
 		while not monitor.abortRequested():
 			try:
-				if is_playing() or kodi_utils.get_property(pause_services_prop) == 'true':
+				if is_playing():
 					last_playing = time()
-				elif not kodi_utils.service_shutting_down(monitor) and time() - last_playing >= self.after_playback:
-					reason = watched_sync.sync_due()
-					if reason:
+				elif kodi_utils.get_property(pause_services_prop) != 'true' and not kodi_utils.service_shutting_down(monitor) \
+						and time() - last_playing >= self.after_playback:
+					reason = None
+					if pull_reason:
+						if watched_sync.enabled() and time() - watched_sync.last_run() >= self.repull_seconds: reason = pull_reason
+						pull_reason = None
+					if not reason:
+						reason = watched_sync.sync_due()
 						forced = (watched_sync.pending_age() or 0) >= watched_sync.FORCE_AFTER_SECONDS
-						if forced or getGlobalIdleTime() >= self.idle_needed:
-							status, message = watched_sync.run_sync(silent=True, reason=reason)
-							kodi_utils.logger('Red Light', 'Watched Sync %s - %s' % (status, message))
+						if reason and not forced and getGlobalIdleTime() < self.idle_needed: reason = None
+					if reason:
+						status, message = watched_sync.run_sync(silent=True, reason=reason)
+						kodi_utils.logger('Red Light', 'Watched Sync %s - %s' % (status, message))
 			except Exception as e: kodi_utils.logger('Red Light', 'Watched Sync Failed: %s' % str(e))
-			# A cheap tick: the pending file's age and the stored last run decide when work happens.
-			wait_for_abort(20)
+			# A cheap tick: the pending file's age and the stored last run decide when work
+			# happens. Checked in 2 second steps so a wake is answered at once.
+			for _step in range(self.tick // 2):
+				started = time()
+				if wait_for_abort(2): break
+				if kodi_utils.get_property(watched_sync_wake_prop) or time() - started > self.sleep_gap:
+					kodi_utils.clear_property(watched_sync_wake_prop)
+					pull_reason = 'wake'
+					break
+			if pull_reason == 'wake': wait_for_abort(self.wake_delay)
 		try: del player
 		except: pass
 		return kodi_utils.logger('Red Light', 'WatchedSyncMonitor Service Finished')
@@ -345,6 +372,7 @@ class RedLightMonitor(Monitor):
 			kodi_utils.logger('OnNotificationActions', 'PAUSING Red Light Services Due to Device Sleep')
 		elif method in ('GUI.OnScreensaverDeactivated', 'System.OnWake'):
 			kodi_utils.clear_property(pause_services_prop)
+			kodi_utils.set_property(watched_sync_wake_prop, 'true')
 			kodi_utils.logger('OnNotificationActions', 'UNPAUSING Red Light Services Due to Device Awake')
 		elif method in ('Addon.OnDisabled', 'Addon.OnUninstalled'):
 			try:
