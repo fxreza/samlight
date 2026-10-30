@@ -145,6 +145,14 @@ def clear_refresh_needed():
 	try: _window().clearProperty(REFRESH_NEEDED_PROP)
 	except Exception: pass
 
+def schedule_refresh_check(delay='00:00:04'):
+	"""(Re)arm the one playback_widget_check: each call pushes it back, so it runs once,
+	a few seconds after the last stop or stale replay."""
+	try:
+		xbmc.executebuiltin('CancelAlarm(redlight_playback_widget_check,silent)')
+		xbmc.executebuiltin('AlarmClock(redlight_playback_widget_check,RunPlugin(plugin://plugin.video.redlight/?mode=playback_widget_check),%s,silent)' % delay)
+	except Exception: pass
+
 def _stale_replay_allowed():
 	"""A stale snapshot may stand in while a video plays (Home is not visible, and a rebuild
 	would steal the CPU from the video) and in the first seconds after a playback end (Home
@@ -420,6 +428,12 @@ def try_replay(argv, mode, params):
 		key = make_key(argv)
 		handle = int(argv[1])
 		outcome = replay(handle, key, allow_stale=_stale_replay_allowed() or user_inside_addon())
+		if outcome == 'stale':
+			# The flag alone refreshes nothing: a watched mark made in the credits ran its only
+			# check while the video still played. Outside playback, this replay arms the check.
+			try: playing = xbmc.Player().isPlayingVideo()
+			except Exception: playing = False
+			if not playing: schedule_refresh_check()
 		if outcome:
 			_log('replayed %s%s' % (mode, '' if outcome == 'fresh' else ' (stale, refresh follows)'))
 			return True

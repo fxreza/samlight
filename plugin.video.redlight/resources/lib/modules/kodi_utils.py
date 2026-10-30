@@ -957,7 +957,7 @@ def schedule_playback_widget_refresh():
 	"""
 	if service_shutting_down(): return
 	mark_playback_widget_refresh()
-	execute_builtin('AlarmClock(redlight_playback_widget_check,RunPlugin(plugin://plugin.video.redlight/?mode=playback_widget_check),00:00:04,silent)')
+	widget_snapshot.schedule_refresh_check()
 
 def playback_widget_check():
 	"""One refresh, only when needed: Home is showing and its widgets were built before
@@ -965,8 +965,8 @@ def playback_widget_check():
 	so an open Red Light menu is never reloaded under the user."""
 	if service_shutting_down(): return
 	try:
-		# Never rebuild the widgets under a playing video: the next stop saves again and
-		# schedules a new check.
+		# Never rebuild the widgets under a playing video: the player's stop callback
+		# arms a new check.
 		if kodi_player().isPlayingVideo(): return
 		if not home(): return
 		saved = float(get_property(PLAYBACK_WIDGET_REFRESH_PROP) or 0)

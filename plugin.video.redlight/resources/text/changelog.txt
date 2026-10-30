@@ -1,3 +1,6 @@
+[COLOR red][B]Version 2.11.6[/B][/COLOR]
+- [B]Widgets[/B]: a movie or episode watched to the end shows as watched on Home again, a few seconds after the stop.
+
 [COLOR red][B]Version 2.11.5[/B][/COLOR]
 - [B]Watched Sync[/B]: other devices' marks come in 45 seconds after Kodi starts and a few seconds after every wake from the screensaver or sleep, not only on the hourly timer. Never during playback.
 

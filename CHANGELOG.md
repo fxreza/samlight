@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.11.6.1] - 2026-10-30
+
+- Home widgets show a movie or episode as watched again after you watch it to the end. Since 2.11.3 the watched mark made in the credits scheduled its only widget refresh while the video was still playing, that refresh skipped itself, and nothing ran it again after the stop, so Home kept the old snapshot. The player's stop now schedules the refresh, and so does Home replaying an old snapshot in the seconds after a stop. Home still shows at once and refreshes once a few seconds later. Marking as watched by hand already worked.
+
 ## [2.11.5.1] - 2026-10-30
 
 - Watched sync pulls other devices' marks when you start using a device, not only on the hourly timer. The first pull runs 45 seconds after Kodi starts (was 150, and it was skipped when the last sync was under an hour old), and a pull runs about 5 seconds after the screensaver ends or the device wakes, including a Fire TV that suspended Kodi without a wake notice. These pulls do not wait for the remote to go idle; they still never run during playback or in the 90 seconds after it, and are skipped when a sync ran in the last minute. The hourly pull stays as a backup.

@@ -99,10 +99,12 @@ class RedLightPlayer(xbmc.Player):
 			ku.set_property(PROP_PLAYBACK_END_KIND, kind)
 		except: pass
 		# Home widgets replay their last snapshot in the next seconds (Home shows at once);
-		# the progress save that follows invalidates them and schedules the one refresh.
+		# the check that follows refreshes them once. A progress save after a stop arms it
+		# too, but a watched mark made in the credits armed it while the video still played.
 		try:
 			from modules import widget_snapshot
 			widget_snapshot.note_playback_end()
+			widget_snapshot.schedule_refresh_check()
 		except: pass
 
 	def run(self, url=None, obj=None):
