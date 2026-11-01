@@ -5,7 +5,7 @@ import random
 from threading import Thread, Lock
 from caches.external_cache import external_cache
 from caches.settings_cache import get_setting
-from modules import kodi_utils, source_utils
+from modules import kodi_utils, source_utils, source_test
 from modules.debrid import RD_check, AD_check, OC_check, TB_check, PM_check, query_local_cache
 from modules.settings import debrid_cache_check, max_threads
 from modules.utils import clean_file_name
@@ -106,6 +106,11 @@ class source:
 				self.data = {'imdb': info['imdb_id'], 'tvdb': info['tvdb_id'], 'tvshowtitle': self.title, 'aliases': aliases,'year': self.year,
 							'title': ep_name, 'season': str(self.season), 'episode': str(self.episode)}
 		except: return []
+		if source_test.enabled():
+			if self.external_orchestration: modules = [g.get('display_name') for g in self.external_orchestration.get('groups', [])]
+			else: modules = sorted({str(i[5]) for i in self.source_dict if len(i) > 5 and i[5]})
+			source_test.search_start(self.meta, info, self.timeout, modules, self.background,
+				'retry_all_providers' if self.timeout == 60 else 'search')
 		if self.external_orchestration and len(self.external_orchestration.get('groups', [])) > 1:
 			return self._get_sources_orchestrated()
 		return self._get_sources_flat()
@@ -147,11 +152,24 @@ class source:
 			Thread(target=self.process_episode_threads).start()
 		if self.background: _background()
 		else: _scraperDialog()
+		self._source_test_scrape_end()
 		if self._scrape_was_cancelled():
 			return []
 		current_results = list(self.sources)
-		if current_results: return self.process_results(current_results)
+		if current_results: return self._source_test_cache(self.process_results(current_results))
 		return []
+
+	def _source_test_scrape_end(self, reason=None):
+		if not source_test.enabled(): return
+		if not reason:
+			if self._cloud_hit(): reason = 'cloud_hit'
+			elif any(x.is_alive() for x in self.threads): reason = 'timeout'
+			else: reason = 'all_done'
+		source_test.scrape_end(self.threads, reason)
+
+	def _source_test_cache(self, results):
+		source_test.cache(results)
+		return results
 
 	def _scrape_was_cancelled(self):
 		if self._cloud_hit(): return True
@@ -187,10 +205,11 @@ class source:
 		try:
 			kodi_utils.logger('ScrapeExternalWave', 'finished total=%d reason=%s' % (len(self.sources), stop_reason))
 		except: pass
+		self._source_test_scrape_end(stop_reason)
 		if self._scrape_was_cancelled():
 			return []
 		current_results = list(self.sources)
-		if current_results: return self.process_results(current_results)
+		if current_results: return self._source_test_cache(self.process_results(current_results))
 		return []
 
 	def _get_sources_primary_dedicated(self, orch):
@@ -354,13 +373,20 @@ class source:
 			self.threads_completed = True
 
 	def get_movie_source(self, provider_label, module, cache_key, source_provider, external_module):
+		started, raw_count = time.time(), None
 		sources = external_cache.get(cache_key, self.media_type, self.tmdb_id, self.title, self.year, '', '')
+		from_cache = sources is not None
 		if sources == None:
-			sources = module().sources(self.data, self.host_dict)			
+			try: sources = module().sources(self.data, self.host_dict)
+			except Exception as error:
+				source_test.source(external_module, source_provider, '', started, False, 0, [], error=error)
+				raise
+			raw_count = len(sources) if isinstance(sources, list) else 0
 			sources = self.process_sources(source_provider, sources, external_module)
 			if not sources: expiry_hours = 1
 			else: expiry_hours = self.single_expiry
 			external_cache.set(cache_key, self.media_type, self.tmdb_id, self.title, self.year, '', '', sources, expiry_hours)
+		source_test.source(external_module, source_provider, '', started, from_cache, raw_count, sources)
 		if sources:
 			if not self.background: self.process_quality_count(sources)
 			self.sources.extend(sources)
@@ -372,23 +398,33 @@ class source:
 			else: s_check = self.season
 			e_check = ''
 		else: s_check, e_check = self.season, self.episode
+		started, raw_count = time.time(), None
 		sources = external_cache.get(cache_key, self.media_type, self.tmdb_id, self.title, self.year, s_check, e_check)
+		from_cache = sources is not None
 		if sources == None:
-			if pack == 'Show':
-				expiry_hours = self.show_expiry
-				sources = module().sources_packs(self.data, self.host_dict, search_series=True, total_seasons=self.total_seasons)
-			elif pack == 'Season':
-				expiry_hours = self.season_expiry
-				sources = module().sources_packs(self.data, self.host_dict)
-			else:
-				expiry_hours = self.single_expiry
-				sources = module().sources(self.data, self.host_dict)
+			try:
+				if pack == 'Show':
+					expiry_hours = self.show_expiry
+					sources = module().sources_packs(self.data, self.host_dict, search_series=True, total_seasons=self.total_seasons)
+				elif pack == 'Season':
+					expiry_hours = self.season_expiry
+					sources = module().sources_packs(self.data, self.host_dict)
+				else:
+					expiry_hours = self.single_expiry
+					sources = module().sources(self.data, self.host_dict)
+			except Exception as error:
+				source_test.source(external_module, source_provider, pack, started, False, 0, [], error=error)
+				raise
+			raw_count = len(sources) if isinstance(sources, list) else 0
 			sources = self.process_sources(source_provider, sources, external_module)
 			if not sources: expiry_hours = 1
 			external_cache.set(cache_key, self.media_type, self.tmdb_id, self.title, self.year, s_check, e_check, sources, expiry_hours)
+		found = sources
 		if sources:
 			if pack == 'Season': sources = [i for i in sources if not 'episode_start' in i or i['episode_start'] <= self.episode <= i['episode_end']]
 			elif pack == 'Show': sources = [i for i in sources if i['last_season'] >= self.season]
+		source_test.source(external_module, source_provider, pack, started, from_cache, raw_count, found, used_count=len(sources or []))
+		if sources:
 			if not self.background: self.process_quality_count(sources)
 			self.sources.extend(sources)
 		del module

@@ -3690,6 +3690,14 @@
                       </item>
                       <item>
                           <visible>Container(2000).HasFocus(70)</visible>
+                          <property name="setting_label">Source Test Log</property>
+                          <property name="setting_type">boolean</property>
+                          <property name="setting_value">$INFO[Window(10000).Property(redlight.source_test.enabled)]</property>
+                          <property name="setting_description">For testing sources. While on, every search writes a record to source_test.jsonl in the addon's data folder: each source's time, links, cache status and what played. Copy that file for analysis, then turn this off again.</property>
+                          <onclick>RunPlugin(plugin://plugin.video.redlight/?mode=settings_manager.set_boolean&amp;setting_id=source_test.enabled)</onclick>
+                      </item>
+                      <item>
+                          <visible>Container(2000).HasFocus(70)</visible>
                           <property name="setting_label">Results Display Format</property>
                           <property name="setting_type">action</property>
                           <property name="setting_value">$INFO[Window(10000).Property(redlight.results.list_format)]</property>

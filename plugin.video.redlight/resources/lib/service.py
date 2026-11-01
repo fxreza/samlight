@@ -340,6 +340,8 @@ class CloudTempMonitor:
 		from modules import cloud_temp
 		player = kodi_utils.kodi_player()
 		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
+		try: cloud_temp.apply_default_once()
+		except Exception as e: kodi_utils.logger('Red Light', 'Cloud 24h default: %s' % str(e))
 		wait_for_abort(self.start_delay)
 		last_run = 0
 		while not monitor.abortRequested():

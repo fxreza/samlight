@@ -10,7 +10,7 @@ from windows.base_window import open_window, create_window
 from caches.episode_groups_cache import episode_groups_cache
 from caches.settings_cache import get_setting
 from scrapers import external, folders
-from modules import debrid, kodi_utils, settings, metadata, last_sources, slow_hosts, watched_status
+from modules import debrid, kodi_utils, settings, metadata, last_sources, slow_hosts, watched_status, source_test
 from modules.player import RedLightPlayer
 from modules.source_utils import get_cache_expiry, make_alias_dict, include_exclude_filters, get_file_info, release_info_format, audio_lang_choices, matches_english_or_untagged
 from modules.release_groups import release_group_boost
@@ -773,6 +773,7 @@ class Sources():
 				if not self.orig_results: self._kill_progress_dialog()
 				self.orig_results = self._stamp_native_torrent_cache(self.orig_results)
 				results = self.process_results(self.orig_results)
+				source_test.kept(results)
 			if self._user_cancelled_scrape():
 				return self._finish_scrape_cancel()
 			if self.background: results = self._prefer_saved_pack(results)
@@ -2983,7 +2984,10 @@ class Sources():
 							elif self.background:
 								self._wait_player_idle(max_ms=2000, light=True)
 							player.run(url, self)
-						else: continue
+							source_test.play(item, 'opened' if self.playback_successful else 'failed')
+						else:
+							source_test.play(item, 'no_url')
+							continue
 						if self.cancel_all_playback or self._resolve_user_cancelled:
 							break
 						if self.playback_successful: break

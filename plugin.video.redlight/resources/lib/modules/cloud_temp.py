@@ -265,6 +265,22 @@ def _sweep_premiumize(now):
 		except Exception: pass
 	return removed
 
+def apply_default_once():
+	"""2.11.8 made 'All, Remove After 24 Hours' the default for TorBox and Premiumize. Once per
+	device, a choice still at None moves to it; any other choice the user made is kept."""
+	from caches.settings_cache import get_setting, set_setting, settings_cache, default_setting_values
+	if get_setting('redlight.cloud_temp.default_applied', 'false') == 'true': return
+	for service in ('torbox', 'premiumize.me'):
+		setting_id = 'store_resolved_to_cloud.%s' % service
+		if get_setting('redlight.%s' % setting_id, '0') != '0': continue
+		set_setting(setting_id, '3')
+		try:
+			label = default_setting_values(setting_id)['settings_options']['3']
+			settings_cache.set_memory_cache('%s_name' % setting_id, label)
+		except Exception: pass
+		_log('%s set to All, Remove After 24 Hours' % setting_id)
+	set_setting('cloud_temp.default_applied', 'true')
+
 def has_work():
 	data = _read()
 	if data.get('torbox') or data.get('pm_folder') or data.get('pm_transfers'): return True

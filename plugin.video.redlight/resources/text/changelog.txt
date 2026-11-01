@@ -1,3 +1,7 @@
+[COLOR red][B]Version 2.11.8[/B][/COLOR]
+- [B]Results[/B]: new Source Test Log setting. While on, every search records each source's time, links, cache status and what played to source_test.jsonl in the add-on's data folder, for analysis. Turn it off when done.
+- [B]Cloud[/B]: TorBox and Premiumize "Add Resolved Debrid Cache to Cloud" is now "All, Remove After 24 Hours" by default. A device still at None is switched once; your own choice is kept.
+
 [COLOR red][B]Version 2.11.7[/B][/COLOR]
 - [B]Widgets[/B]: Next Episodes shows the right episode as soon as you are back on Home after watching one. In Progress and Recently Watched too.
 - [B]Next Episode[/B]: Play in the alert pauses the episode at once and stops it behind the loading screen, instead of letting it play on for a few seconds.

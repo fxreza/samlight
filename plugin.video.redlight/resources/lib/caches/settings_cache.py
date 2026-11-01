@@ -1809,7 +1809,7 @@ def default_settings():
 {'setting_id': 'pm.cache_check', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'pm.include_uncached', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'pm.account_id', 'setting_type': 'string', 'setting_default': 'empty_setting'},
-{'setting_id': 'store_resolved_to_cloud.premiumize.me', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'None', '1': 'All', '2': 'Show Packs Only', '3': 'All, Remove After 24 Hours'}},
+{'setting_id': 'store_resolved_to_cloud.premiumize.me', 'setting_type': 'action', 'setting_default': '3', 'settings_options': {'0': 'None', '1': 'All', '2': 'Show Packs Only', '3': 'All, Remove After 24 Hours'}},
 {'setting_id': 'provider.pm_cloud', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'pm_cloud.title_filter', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'check.pm_cloud', 'setting_type': 'boolean', 'setting_default': 'false'},
@@ -1847,7 +1847,8 @@ def default_settings():
 {'setting_id': 'tb.enabled', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'tb.cache_check', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'tb.include_uncached', 'setting_type': 'boolean', 'setting_default': 'false'},
-{'setting_id': 'store_resolved_to_cloud.torbox', 'setting_type': 'action', 'setting_default': '0', 'settings_options': {'0': 'None', '1': 'All', '2': 'Show Packs Only', '3': 'All, Remove After 24 Hours'}},
+{'setting_id': 'cloud_temp.default_applied', 'setting_type': 'boolean', 'setting_default': 'false'},
+{'setting_id': 'store_resolved_to_cloud.torbox', 'setting_type': 'action', 'setting_default': '3', 'settings_options': {'0': 'None', '1': 'All', '2': 'Show Packs Only', '3': 'All, Remove After 24 Hours'}},
 {'setting_id': 'tb.notify_cloud_ready', 'setting_type': 'boolean', 'setting_default': 'true'},
 {'setting_id': 'provider.tb_cloud', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'tb_cloud.title_filter', 'setting_type': 'boolean', 'setting_default': 'true'},
@@ -1936,6 +1937,7 @@ def default_settings():
 #===============================================================================#
 #==================== Display
 {'setting_id': 'results.timeout', 'setting_type': 'action', 'setting_default': '20', 'min_value': '1'},
+{'setting_id': 'source_test.enabled', 'setting_type': 'boolean', 'setting_default': 'false'},
 {'setting_id': 'results.list_format', 'setting_type': 'string', 'setting_default': 'List'},
 {'setting_id': 'results.show_episode_title', 'setting_type': 'boolean', 'setting_default': 'true'},
 #==================== Rescrape
