@@ -1409,11 +1409,19 @@ class RedLightPlayer(xbmc.Player):
 			from modules.sources import schedule_nextep_stashed_play
 			if schedule_nextep_stashed_play(stash):
 				self._nextep_stash_play_scheduled = True
+				self._hold_for_nextep_play()
 			else:
 				ku.logger('Red Light', 'Autoplay next episode play failed: could not schedule resolve')
 		except Exception as exc:
 			ku.logger('Red Light', 'Autoplay next episode play failed: %s' % exc)
 		return
+
+	def _hold_for_nextep_play(self):
+		# Play in the alert: freeze this episode now. The next episode's player stops it behind
+		# its loading screen a moment later, so it never plays on after the button.
+		try:
+			if self.isPlayingVideo() and not ku.get_visibility('Player.Paused'): self.pause()
+		except: pass
 
 	def run_next_ep(self):
 		from modules.episode_tools import EpisodeTools

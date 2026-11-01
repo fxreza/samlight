@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.7.1] - 2026-10-31
+
+- Next Episodes on Home shows the right episode as soon as you are back on Home after watching one. Since 2.11.3, in the seconds after a stop it replayed its saved list (still showing the episode you just watched) and waited for one later refresh, which could be skipped. Next Episodes, In Progress and Recently Watched now rebuild at once when Home asks for them after a playback; the other widgets still replay their saved lists. They still never rebuild while a video plays or the next episode is loading.
+- The later refresh no longer misses an out-of-date widget: each widget keeps its own "showed an old list" mark, so another widget's rebuild can no longer clear it.
+- Play in the Next Episode alert pauses the episode at once and then stops it behind the loading screen. Since 2.11.2 the episode played on for a few seconds while the next one loaded, then stopped with Home showing.
+- New Store Resolved to Cloud choice for TorBox and Premiumize: "All, Remove After 24 Hours". What you play is added to the cloud and removed 24 hours after you last played it. Only what playback added is ever removed. TorBox: a ledger lists each torrent and usenet download playback added (written before the add, so a crash still leaves its hash), and an item whose TorBox creation time is before the play, such as one you added yourself, is never deleted. Premiumize: transfers go into their own "Samlight Temp" folder and only that folder is cleaned. The service checks after start-up, every hour and after a wake, never during playback, and keeps retrying a failed delete until the item is confirmed gone.
+
 ## [2.11.6.1] - 2026-10-30
 
 - Home widgets show a movie or episode as watched again after you watch it to the end. Since 2.11.3 the watched mark made in the credits scheduled its only widget refresh while the video was still playing, that refresh skipped itself, and nothing ran it again after the stop, so Home kept the old snapshot. The player's stop now schedules the refresh, and so does Home replaying an old snapshot in the seconds after a stop. Home still shows at once and refreshes once a few seconds later. Marking as watched by hand already worked.

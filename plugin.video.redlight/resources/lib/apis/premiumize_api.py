@@ -115,7 +115,13 @@ class PremiumizeAPI:
 				file_url = max(valid_results, key=lambda x: int(x.get('size'))).get('link', None)
 				if not any(file_url.lower().endswith(x) for x in extensions): file_url = None
 			if file_url:
-				if store_to_cloud: Thread(target=self.create_transfer, args=(magnet_url,)).start()
+				if store_to_cloud:
+					from modules.settings import cloud_temporary
+					if cloud_temporary('Premiumize.me'):
+						# Into the Samlight Temp folder; the service removes it after 24 hours.
+						from modules import cloud_temp
+						Thread(target=cloud_temp.pm_store_temporarily, args=(self, magnet_url, info_hash)).start()
+					else: Thread(target=self.create_transfer, args=(magnet_url,)).start()
 				return self.add_headers_to_url(file_url)
 		except: return None
 

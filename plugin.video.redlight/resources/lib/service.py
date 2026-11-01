@@ -327,6 +327,38 @@ class WatchedSyncMonitor:
 		except: pass
 		return kodi_utils.logger('Red Light', 'WatchedSyncMonitor Service Finished')
 
+class CloudTempMonitor:
+	"""Removes what playback stored in TorBox / Premiumize in 24-hour mode (modules.cloud_temp)."""
+	start_delay = 150
+	interval = 3600
+	tick = 60
+	# A tick that takes this long means the device was asleep: sweep soon after the wake.
+	sleep_gap = 180
+
+	def run(self, monitor):
+		kodi_utils.logger('Red Light', 'CloudTempMonitor Service Starting')
+		from modules import cloud_temp
+		player = kodi_utils.kodi_player()
+		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
+		wait_for_abort(self.start_delay)
+		last_run = 0
+		while not monitor.abortRequested():
+			try:
+				# Never during playback: a TorBox link dies with its torrent.
+				if time() - last_run >= self.interval and not is_playing() and not kodi_utils.service_shutting_down(monitor) \
+						and kodi_utils.get_property(pause_services_prop) != 'true':
+					last_run = time()
+					if cloud_temp.has_work():
+						removed = cloud_temp.sweep()
+						if removed: kodi_utils.logger('Red Light', 'Cloud 24h: removed %s item(s)' % removed)
+			except Exception as e: kodi_utils.logger('Red Light', 'Cloud 24h Failed: %s' % str(e))
+			started = time()
+			if wait_for_abort(self.tick): break
+			if time() - started > self.sleep_gap: last_run = 0
+		try: del player
+		except: pass
+		return kodi_utils.logger('Red Light', 'CloudTempMonitor Service Finished')
+
 class AddonXMLCheck:
 	def run(self):
 		kodi_utils.logger('Red Light', 'AddonXMLCheck Service Starting')
@@ -365,6 +397,7 @@ class RedLightMonitor(Monitor):
 		_start_daemon(lambda: TMDbListSyncMonitor().run(self))
 		_start_daemon(lambda: WatchedSyncMonitor().run(self))
 		_start_daemon(lambda: CloudBackupMonitor().run(self))
+		_start_daemon(lambda: CloudTempMonitor().run(self))
 
 	def onNotification(self, sender, method, data):
 		if method in ('GUI.OnScreensaverActivated', 'System.OnSleep'):

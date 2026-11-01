@@ -1,3 +1,8 @@
+[COLOR red][B]Version 2.11.7[/B][/COLOR]
+- [B]Widgets[/B]: Next Episodes shows the right episode as soon as you are back on Home after watching one. In Progress and Recently Watched too.
+- [B]Next Episode[/B]: Play in the alert pauses the episode at once and stops it behind the loading screen, instead of letting it play on for a few seconds.
+- [B]Cloud[/B]: new Store Resolved to Cloud choice for TorBox and Premiumize, "All, Remove After 24 Hours". What you play is removed 24 hours after you last played it; what you added yourself is never touched. Premiumize uses its own "Samlight Temp" folder.
+
 [COLOR red][B]Version 2.11.6[/B][/COLOR]
 - [B]Widgets[/B]: a movie or episode watched to the end shows as watched on Home again, a few seconds after the stop.
 

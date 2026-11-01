@@ -33,8 +33,9 @@ GENERATION_PROP = 'redlight.widget_generation'
 # When the last playback ended (player callback). Widget requests in the seconds after a stop
 # replay their last snapshot even if stale, so Home appears at once; one refresh follows.
 PLAYBACK_END_AT_PROP = 'redlight.playback_end_at'
-# Set when a stale snapshot was replayed: playback_widget_check then refreshes Home once.
-REFRESH_NEEDED_PROP = 'redlight.widget_refresh_needed'
+# A stale snapshot was replayed: a '<key>.stale' marker per widget in the cache folder, so one
+# widget's rebuild cannot clear another's. playback_widget_check then refreshes Home once.
+_STALE_MARK = '.stale'
 # The progress save after a stop lands before the player callback; either one opens the grace.
 PLAYBACK_SAVED_AT_PROP = 'redlight.playback_widget_refresh_at'
 # Set by an explicit refresh (kodi_refresh): grace timestamps older than this no longer count,
@@ -62,6 +63,9 @@ SNAPSHOT_MODES = frozenset((
 	'trakt.list.build_trakt_list', 'tmdblist.build_tmdb_list', 'personal_lists.build_personal_list',
 	'mdblist.build_mdbl_list', 'simkl.list.build_simkl_list', 'punchplay.list.build_punchplay_list',
 ))
+# Lists that change with what was just watched. After a playback they rebuild as soon as Home
+# asks again instead of replaying a stale snapshot, so the next episode shows right away.
+WATCH_MODES = frozenset(('build_next_episode', 'build_in_progress_episode', 'build_recently_watched_episode'))
 _NO_SNAPSHOT_PARAMS = ('random', 'shuffle', 'random_support', 'random_continual')
 _TAG_GETTERS = ('getVideoInfoTag', 'getMusicInfoTag')
 
@@ -138,12 +142,25 @@ def clear_playback_end_grace():
 		_window().setProperty(GRACE_CLOSED_AT_PROP, str(time.time()))
 	except Exception: pass
 
+def _stale_marks():
+	try: return [name for name in os.listdir(_cache_dir()) if name.endswith(_STALE_MARK)]
+	except Exception: return []
+
+def _mark_stale(key):
+	try: open(os.path.join(_cache_dir(), key + _STALE_MARK), 'w').close()
+	except Exception: pass
+
+def _clear_stale(key):
+	try: os.remove(os.path.join(_cache_dir(), key + _STALE_MARK))
+	except Exception: pass
+
 def refresh_needed():
-	return _window().getProperty(REFRESH_NEEDED_PROP) == 'true'
+	return bool(_stale_marks())
 
 def clear_refresh_needed():
-	try: _window().clearProperty(REFRESH_NEEDED_PROP)
-	except Exception: pass
+	for name in _stale_marks():
+		try: os.remove(os.path.join(_cache_dir(), name))
+		except Exception: pass
 
 def schedule_refresh_check(delay='00:00:04'):
 	"""(Re)arm the one playback_widget_check: each call pushes it back, so it runs once,
@@ -171,6 +188,15 @@ def _stale_replay_allowed():
 		except Exception:
 			pass
 	return False
+
+def _playback_busy():
+	"""A video plays, or the next one is resolving or opening: a rebuild now would compete with it."""
+	try:
+		if xbmc.Player().isPlayingVideo(): return True
+	except Exception:
+		pass
+	window = _window()
+	return window.getProperty('redlight.play_opening') == 'true' or window.getProperty('redlight.resolve_busy') == 'true'
 
 def user_inside_addon():
 	"""The user is browsing a Red Light list: background widget rebuilds must not compete."""
@@ -258,8 +284,6 @@ def recording():
 
 def begin(key):
 	_state['key'], _state['ops'], _state['items'], _state['failed'] = key, [], 0, False
-	try: _window().clearProperty(REFRESH_NEEDED_PROP)
-	except Exception: pass
 
 def abandon():
 	_state['key'], _state['ops'], _state['items'], _state['failed'] = None, [], 0, False
@@ -354,8 +378,14 @@ def record_end(update_listing, cache_to_disc):
 			tmp = '%s.%s.tmp' % (path, os.getpid())
 			with open(tmp, 'wb') as handle: handle.write(payload)
 			os.replace(tmp, path)
+			_clear_stale(key)
 		except Exception as error:
 			_log('store failed: %s' % error)
+	else:
+		# Now empty (the last next episode watched): the old list must not be replayed again.
+		try: os.remove(_path(key))
+		except Exception: pass
+		_clear_stale(key)
 	# Stored first, released second: a sibling waiting for its turn then replays this snapshot.
 	abandon()
 
@@ -402,8 +432,7 @@ def replay(handle, key, allow_stale=False):
 	if not data: return False
 	if not fresh:
 		if not allow_stale: return False
-		try: _window().setProperty(REFRESH_NEEDED_PROP, 'true')
-		except Exception: pass
+		_mark_stale(key)
 	sort_methods = {'episodes': 24, 'files': 5, 'label': 2, 'none': 0}
 	try:
 		for op in data['ops']:
@@ -427,7 +456,9 @@ def try_replay(argv, mode, params):
 		if not is_widget_request(argv) or not eligible(mode, params): return False
 		key = make_key(argv)
 		handle = int(argv[1])
-		outcome = replay(handle, key, allow_stale=_stale_replay_allowed() or user_inside_addon())
+		if mode in WATCH_MODES and not _playback_busy(): allow_stale = user_inside_addon()
+		else: allow_stale = _stale_replay_allowed() or user_inside_addon()
+		outcome = replay(handle, key, allow_stale=allow_stale)
 		if outcome == 'stale':
 			# The flag alone refreshes nothing: a watched mark made in the credits ran its only
 			# check while the video still played. Outside playback, this replay arms the check.
@@ -456,7 +487,7 @@ def clear_all():
 	try:
 		folder = _cache_dir()
 		for name in os.listdir(folder):
-			if name.endswith('.pkl') or name == _REBUILD_LOCK:
+			if name.endswith('.pkl') or name.endswith(_STALE_MARK) or name == _REBUILD_LOCK:
 				try: os.remove(os.path.join(folder, name))
 				except Exception: pass
 	except Exception: pass

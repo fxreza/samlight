@@ -154,7 +154,13 @@ def results_format():
 
 def store_resolved_to_cloud(debrid_service, pack):
 	setting_value = int(get_setting('redlight.store_resolved_to_cloud.%s' % debrid_service.lower(), '0'))
-	return setting_value in (1, 2) if pack else setting_value == 1
+	# 3 (TorBox, Premiumize): stored like All, and modules.cloud_temp removes it after 24 hours.
+	return setting_value in (1, 2, 3) if pack else setting_value in (1, 3)
+
+def cloud_temporary(debrid_service):
+	"""Store Resolved to Cloud is 'All, Remove After 24 Hours' for this service."""
+	try: return int(get_setting('redlight.store_resolved_to_cloud.%s' % debrid_service.lower(), '0')) == 3
+	except: return False
 
 def enabled_debrids_check(debrid_service):
 	if not get_setting('redlight.%s.enabled' % debrid_service) == 'true': return False

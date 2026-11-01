@@ -552,7 +552,9 @@ class Sources():
 				kodi_utils.logger('Red Light', 'Autoplay next episode play: no persisted stash')
 				return
 			self._nextep_wait_end = params_get('nextep_wait_end') == 'true'
-			self._nextep_quiet_resolve = True
+			# Resolve behind the playing video only while waiting for its end. Play in the alert
+			# shows the loading screen and stops the (paused) episode at once instead.
+			self._nextep_quiet_resolve = self._nextep_wait_end
 			self.params = dict(stash.get('params') or {})
 			self.params['background'] = 'false'
 			self.params['nextep_stash_play'] = 'true'

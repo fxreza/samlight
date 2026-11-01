@@ -10,11 +10,17 @@ from caches.main_cache import cache_object
 from modules.source_utils import supported_video_extensions, seas_ep_filter, extras
 from modules.utils import copy2clip, make_qrcode
 from modules.kodi_utils import lazy_session, ok_dialog, notification, confirm_dialog, progress_dialog, sleep
+from modules import cloud_temp
 # from modules.kodi_utils import logger
 
 base_url = 'https://api.torbox.app/v1/api/'
 session = lazy_session(base_url)
 
+
+def _cloud_temporary():
+	"""Store Resolved to Cloud is 'All, Remove After 24 Hours': modules.cloud_temp tracks the add."""
+	from modules.settings import cloud_temporary
+	return cloud_temporary('TorBox')
 
 def _to_int(value, default=0):
 	try: return int(str(value).strip())
@@ -714,10 +720,18 @@ class TorBoxAPI:
 			except: max_attempts = 45
 		usenet_id, cleanup_usenet = None, False
 		try:
+			temporary, nzb_hash = store_to_cloud and _cloud_temporary(), ''
+			if temporary:
+				try:
+					from apis.nzb_api import nzb_link_hash
+					nzb_hash = nzb_link_hash(nzb_link)
+				except Exception: pass
+				cloud_temp.torbox_pending('usenet', nzb_hash)
 			result = self.add_nzb(nzb_link, name=title or '')
 			usenet_id = self._usenet_id_from_create(result)
 			if not usenet_id:
 				return None
+			if temporary: cloud_temp.torbox_added('usenet', nzb_hash, usenet_id)
 			cleanup_usenet = not store_to_cloud
 			extensions = supported_video_extensions()
 			extras_filter = extras()
@@ -793,10 +807,13 @@ class TorBoxAPI:
 			extensions = supported_video_extensions()
 			extras_filter = extras()
 			extras_filtering_list = tuple(i for i in extras_filter if i not in (title or '').lower())
+			temporary = store_to_cloud and _cloud_temporary()
+			if temporary: cloud_temp.torbox_pending('torrent', info_hash)
 			torrent = self.add_magnet(magnet_url)
 			torrent_id = self._torrent_id_from_create(torrent)
 			if not torrent_id:
 				return None
+			if temporary: cloud_temp.torbox_added('torrent', info_hash, torrent_id, str(torrent_id) in prior_mylist_ids)
 			cleanup_torrent = (not store_to_cloud and str(torrent_id) not in prior_mylist_ids)
 			_item = self._torrent_item_from_info(self.torrent_info_fresh(torrent_id))
 			files = (_item or {}).get('files') or []
@@ -858,9 +875,12 @@ class TorBoxAPI:
 		torrent_id, keep_transfer = None, False
 		try:
 			extensions = supported_video_extensions()
+			temporary = _cloud_temporary()
+			if temporary: cloud_temp.torbox_pending('torrent', info_hash)
 			torrent_id = self.create_transfer(magnet_url)
 			if not torrent_id:
 				return None
+			if temporary: cloud_temp.torbox_added('torrent', info_hash, torrent_id)
 			item = self._torrent_item_from_info(self.torrent_info_fresh(torrent_id))
 			files = (item or {}).get('files') or []
 			if not files:
