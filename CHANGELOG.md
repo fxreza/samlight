@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.12.3.1] - 2026-11-09
+
+- Trakt lists you follow without a Trakt login (liked lists, other users' lists, Trakt's own lists) now pick up their changes within about half an hour. Their saved contents were only cleared by the daily Trakt sync, which since the background Trakt timer was removed only runs during a Trakt action, so without a login a list such as "Latest Releases" could stay weeks old on one device while another showed the new one. Now, at most every 30 minutes, building the list (as a widget or a menu) asks Trakt when the list last changed: one small request, no login, and the full list is only downloaded again when it did change. Nothing runs on a timer.
+
 ## [2.12.2.1] - 2026-11-09
 
 - Watched sync sends sooner after a stop: as soon as the widget update that follows the stop has finished, and at least 2 seconds after it (was a fixed 10 seconds). On the laptop that is about 3 seconds; on the Fire TV about 5, right after Next Episodes has updated, so the send and the widget update never compete for the CPU. If that update somehow does not finish, the send goes 30 seconds after the stop. Checks for other devices' changes are unchanged: once a minute while idle, and straight away when the remote is picked up after a quiet minute.

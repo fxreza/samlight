@@ -906,6 +906,33 @@ def trakt_lists_with_media(media_type, imdb_id):
 	string = 'trakt_lists_with_media_v3_%s' % imdb_id
 	return cache_object(_process, string, 'foo', False, 168)
 
+# Someone else's public list (liked, searched or Trakt's own) changes without any activity on
+# this account, and with no Trakt login there is no account activity at all. Its saved contents
+# are kept until the list itself says it changed: at most this often, a list build asks Trakt
+# for the list's details (under 1 KB, no login) and drops the saved contents when its
+# updated_at moved. Nothing runs on a timer; a widget that is not rebuilt asks nothing.
+LIST_CHANGE_CHECK_SECONDS = 1800
+
+def _drop_list_contents_if_changed(string, summary_path):
+	check_key = 'trakt_list_checked_%s' % string
+	try:
+		state = trakt_cache.trakt_cache.get(check_key) or {}
+		now = time.time()
+		if now - float(state.get('checked', 0)) < LIST_CHANGE_CHECK_SECONDS: return
+		try: details = call_trakt(summary_path, params={}, with_auth=False, pagination=False)
+		except Exception as e:
+			details = None
+			kodi_utils.logger('Trakt', 'list change check failed: %s' % e)
+		# No answer (offline, private list): keep the saved contents and ask again next time round.
+		updated_at = details.get('updated_at') if isinstance(details, dict) else None
+		if updated_at and updated_at != state.get('updated_at'):
+			# Also on the first check: an older copy may be weeks old, and nothing says otherwise.
+			trakt_cache.trakt_cache.delete(string)
+			kodi_utils.logger('Trakt', 'list changed (%s), fetching it again: %s' % (updated_at, summary_path))
+		trakt_cache.trakt_cache.set(check_key, {'checked': now, 'updated_at': updated_at or state.get('updated_at')})
+	except Exception as e:
+		kodi_utils.logger('Trakt', 'list change check failed: %s' % e)
+
 def get_trakt_list_contents(list_type, user, slug, with_auth, list_id=None, skip_sort=False):
 	# skip_sort is the random builders' flag: they reshuffle the payload themselves, so resolving
 	# and applying a sort first is wasted work. Everything else takes the list's own ordering.
@@ -915,6 +942,7 @@ def get_trakt_list_contents(list_type, user, slug, with_auth, list_id=None, skip
 	# Always ask for the sort headers. The disk cache key below does not encode `method`, so a row
 	# written by one caller is read back by all of them.
 	method = 'sort_by_headers'
+	summary = None
 	if list_type == 'my_lists':
 		string = 'trakt_list_contents_%s_%s_%s' % (list_type, user, slug)
 		params = {'path': 'users/%s/lists/%s/items', 'path_insert': (user, slug), 'params': {'extended': 'full'}, 'method': method, 'with_auth': with_auth, 'fetch_all': True}
@@ -922,12 +950,16 @@ def get_trakt_list_contents(list_type, user, slug, with_auth, list_id=None, skip
 		key = list_id if list_id not in (None, '', 'None') else slug
 		string = 'trakt_list_contents_%s_%s' % (list_type, key)
 		params = {'path': 'lists/%s/items', 'path_insert': key, 'params': {'extended': 'full'}, 'method': method, 'fetch_all': True}
+		summary = 'lists/%s' % key
 	elif list_id is not None:
 		string = 'trakt_list_contents_%s_%s' % (list_type, list_id)
 		params = {'path': 'users/%s/lists/%s/items', 'path_insert': (user, list_id), 'params': {'extended': 'full'}, 'method': method, 'fetch_all': True}
+		summary = 'users/%s/lists/%s' % (user, list_id)
 	else:
 		string = 'trakt_list_contents_%s_%s_%s' % (list_type, user, slug)
 		params = {'path': 'users/%s/lists/%s/items', 'path_insert': (user, slug), 'params': {'extended': 'full'}, 'method': method, 'with_auth': with_auth, 'fetch_all': True}
+		if not with_auth: summary = 'users/%s/lists/%s' % (user, slug)
+	if summary: _drop_list_contents_if_changed(string, summary)
 	data = trakt_cache.cache_trakt_object(get_trakt, string, params) or []
 	# The list's declared order, as recorded in the cached row. 'default' is the standing-in value
 	# for a legacy bare-list row that carries no headers at all.
