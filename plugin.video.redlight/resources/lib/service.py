@@ -267,9 +267,14 @@ class CloudBackupMonitor:
 		return kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Finished')
 
 class WatchedSyncMonitor:
-	# Seconds after playback stops before any sync: the stop's watched mark and resume
-	# point are written first, and Home has started drawing.
+	# Seconds after playback stops before a check for other devices' changes.
 	after_playback = 10
+	# This device's own changes go sooner: at least this many seconds after the stop (the
+	# watched mark and resume point are written within about one), and only once the
+	# widget update that follows a stop has finished, so the two never compete for the
+	# CPU (on a Fire TV that update takes a few seconds). Never later than send_wait_max.
+	send_after_playback = 2
+	send_wait_max = 30
 	# Seconds after Kodi starts before the first check: the start-up load is done in
 	# about 30.
 	start_delay = 45
@@ -291,7 +296,7 @@ class WatchedSyncMonitor:
 	def run(self, monitor):
 		kodi_utils.logger('Red Light', 'WatchedSyncMonitor Service Starting')
 		from xbmc import getGlobalIdleTime
-		from modules import watched_sync
+		from modules import watched_sync, widget_snapshot
 		player = kodi_utils.kodi_player()
 		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
 		wait_for_abort(self.start_delay)
@@ -311,14 +316,18 @@ class WatchedSyncMonitor:
 				if is_playing():
 					last_playing = now
 				elif kodi_utils.get_property(pause_services_prop) != 'true' and not kodi_utils.service_shutting_down(monitor) \
-						and now - last_playing >= self.after_playback and watched_sync.enabled():
+						and now - last_playing >= self.send_after_playback and watched_sync.enabled():
+					since_playing = now - last_playing
+					checks_allowed = since_playing >= self.after_playback
 					reason = None
-					if pull_reason:
+					if pull_reason and checks_allowed:
 						# Asked for by the user's own action: not held back by an earlier failure.
 						if now - watched_sync.last_check() >= self.repull_seconds: reason = pull_reason
 						pull_reason = None
 					if not reason:
 						reason = watched_sync.sync_due(now, self.burst_every if now < burst_until else watched_sync.CHECK_SECONDS)
+						if reason and reason != 'pending' and not checks_allowed: reason = None
+						if reason == 'pending' and since_playing < self.send_wait_max and widget_snapshot.rebuild_running(): reason = None
 					if reason:
 						status, message = watched_sync.run_sync(silent=True, reason=reason)
 						if status != 'unchanged': kodi_utils.logger('Red Light', 'Watched Sync %s - %s' % (status, message))

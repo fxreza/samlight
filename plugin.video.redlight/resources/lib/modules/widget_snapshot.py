@@ -252,6 +252,15 @@ def _release_lock():
 
 # ---------------------------------------------------------------- lock held across builds (widget_prebuild)
 
+def rebuild_running():
+	"""A widget rebuild (or the player's widget_prebuild) is in progress right now."""
+	path = _lock_path()
+	try:
+		if not os.path.exists(path): return False
+		return not _lock_is_stale(path)
+	except Exception:
+		return False
+
 def hold_lock(wait_seconds=0):
 	"""Take the rebuild lock and keep it across several recorded builds. True when held."""
 	if _state.get('locked'):

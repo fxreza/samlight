@@ -51,7 +51,7 @@ RUNNING_PROP = 'redlight.watched_sync_running'
 TOMBSTONE_DAYS = 180
 # Seconds the pending file must sit untouched before it is sent: the watched mark and
 # the resume point of one stop, or a few marks in a row, make one push.
-SETTLE_SECONDS = 5
+SETTLE_SECONDS = 2
 # Pending older than this goes regardless of whether the user is idle.
 FORCE_AFTER_SECONDS = 600
 LAST_PLAYED_FORMAT = '%Y-%m-%d %H:%M:%S'

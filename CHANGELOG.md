@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.12.2.1] - 2026-11-09
+
+- Watched sync sends sooner after a stop: as soon as the widget update that follows the stop has finished, and at least 2 seconds after it (was a fixed 10 seconds). On the laptop that is about 3 seconds; on the Fire TV about 5, right after Next Episodes has updated, so the send and the widget update never compete for the CPU. If that update somehow does not finish, the send goes 30 seconds after the stop. Checks for other devices' changes are unchanged: once a minute while idle, and straight away when the remote is picked up after a quiet minute.
+
 ## [2.12.1.1] - 2026-11-09
 
 - Rewinding now moves the resume point back. Going back in a movie or episode (from minute 20 to minute 10, say) and stopping saved the furthest point reached instead, on every device: the player dropped every position behind the one it knew, to ignore the odd wrong reading Kodi gives right after a seek. It now ignores a single such reading and accepts the earlier position once the next reading confirms it, or when you stop right after rewinding. The watched sync then carries the rewound point to your other devices like any other stop.
