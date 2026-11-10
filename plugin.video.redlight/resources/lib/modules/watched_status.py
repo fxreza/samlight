@@ -431,6 +431,7 @@ def _write_local_progress(watched_indicators, media_type, tmdb_id, season, episo
 	dbcon = get_database(watched_indicators)
 	dbcon.execute('INSERT OR REPLACE INTO progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
 				(media_type, str(tmdb_id), season, episode, str(resume_point), str(curr_time), last_played, 0, title))
+	if watched_indicators == 0: _sync_record('record_progress', media_type, str(tmdb_id), season, episode, resume_point, curr_time, title)
 
 def erase_bookmark(media_type, media_id, season='', episode='', refresh='false', watched_indicators=None):
 	try:
@@ -464,7 +465,8 @@ def erase_bookmark(media_type, media_id, season='', episode='', refresh='false',
 				sleep(1000)
 				punchplay_progress('clear_progress', media_type, media_id, 0, season, episode, resume_id)
 			except: pass
-		watched_db.execute('DELETE FROM progress where db_type = ? and media_id = ? and season = ? and episode = ?', (media_type, media_id, season, episode))
+		removed = watched_db.execute('DELETE FROM progress where db_type = ? and media_id = ? and season = ? and episode = ?', (media_type, media_id, season, episode)).rowcount
+		if removed and watched_indicators == 0: _sync_record('record_progress_cleared', [(media_type, media_id, season, episode)])
 		refresh_container(refresh == 'true')
 	except: pass
 
@@ -487,7 +489,17 @@ def batch_erase_bookmark(watched_indicators, insert_list, action):
 						progress_fn('clear_progress', i[0], i[1], 0, i[2], i[3], resume_id)
 					except: pass
 			Thread(target=_process).start()
+		cleared = []
+		if watched_indicators == 0 and modified_list:
+			# Only rows that had a resume point go to the watched sync, not every episode marked.
+			try:
+				ids = sorted(set(str(i[1]) for i in modified_list))
+				existing = set((str(r[0]), str(r[1]), str(r[2]), str(r[3])) for r in watched_db.execute(
+					'SELECT db_type, media_id, season, episode FROM progress WHERE media_id IN (%s)' % ','.join('?' * len(ids)), ids).fetchall())
+				cleared = [i for i in modified_list if (str(i[0]), str(i[1]), str(i[2]), str(i[3])) in existing]
+			except Exception: cleared = []
 		watched_db.executemany('DELETE FROM progress where db_type = ? and media_id = ? and season = ? and episode = ?', modified_list)
+		if cleared: _sync_record('record_progress_cleared', cleared)
 	except: pass
 
 def set_bookmark(params, remote=True):

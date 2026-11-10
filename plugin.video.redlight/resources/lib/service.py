@@ -267,20 +267,24 @@ class CloudBackupMonitor:
 		return kodi_utils.logger('Red Light', 'CloudBackupMonitor Service Finished')
 
 class WatchedSyncMonitor:
-	# Seconds without remote or keyboard input before an hourly pull may run. A push of
-	# this device's own marks does not wait for idle once the pending file is old enough.
-	idle_needed = 20
-	# Seconds after playback stops before any sync: the widgets rebuild first.
-	after_playback = 90
-	# Seconds after Kodi starts before the first pull: the start-up load is done in
+	# Seconds after playback stops before any sync: the stop's watched mark and resume
+	# point are written first, and Home has started drawing.
+	after_playback = 10
+	# Seconds after Kodi starts before the first check: the start-up load is done in
 	# about 30.
 	start_delay = 45
-	# Seconds after a wake before the pull, so wifi can reconnect first.
+	# Seconds after a wake before the check, so wifi can reconnect first.
 	wake_delay = 5
-	# A start or wake pull is skipped when a sync ran this recently.
-	repull_seconds = 60
-	tick = 20
-	# A tick that takes this long means the device was asleep: a Fire TV suspends Kodi
+	# The remote untouched this long and then pressed: someone just sat down, maybe after
+	# watching on another device. Check at once, then every burst_every seconds for
+	# burst_seconds, so a change still on its way from the other device lands too.
+	quiet_seconds = 60
+	burst_seconds = 120
+	burst_every = 10
+	# A start, wake or remote check is skipped when a check ran this recently.
+	repull_seconds = 10
+	step = 2
+	# A step that takes this long means the device was asleep: a Fire TV suspends Kodi
 	# without always sending a wake notice.
 	sleep_gap = 120
 
@@ -291,38 +295,40 @@ class WatchedSyncMonitor:
 		player = kodi_utils.kodi_player()
 		wait_for_abort, is_playing = monitor.waitForAbort, player.isPlayingVideo
 		wait_for_abort(self.start_delay)
-		last_playing = 0
+		last_playing, burst_until, previous_idle = 0, 0, 0
 		# Someone who just started or woke the device is about to look at the lists, so
-		# both pull straight away instead of waiting for the hourly timer.
+		# both check straight away instead of waiting for the next minute.
 		pull_reason = 'startup'
 		while not monitor.abortRequested():
 			try:
+				now = time()
+				try: idle = getGlobalIdleTime()
+				except Exception: idle = 0
+				if previous_idle >= self.quiet_seconds and idle < previous_idle:
+					# The first key press after a quiet spell (the TV left on Home included).
+					pull_reason, burst_until = 'remote', now + self.burst_seconds
+				previous_idle = idle
 				if is_playing():
-					last_playing = time()
+					last_playing = now
 				elif kodi_utils.get_property(pause_services_prop) != 'true' and not kodi_utils.service_shutting_down(monitor) \
-						and time() - last_playing >= self.after_playback:
+						and now - last_playing >= self.after_playback and watched_sync.enabled():
 					reason = None
 					if pull_reason:
-						if watched_sync.enabled() and time() - watched_sync.last_run() >= self.repull_seconds: reason = pull_reason
+						# Asked for by the user's own action: not held back by an earlier failure.
+						if now - watched_sync.last_check() >= self.repull_seconds: reason = pull_reason
 						pull_reason = None
 					if not reason:
-						reason = watched_sync.sync_due()
-						forced = (watched_sync.pending_age() or 0) >= watched_sync.FORCE_AFTER_SECONDS
-						if reason and not forced and getGlobalIdleTime() < self.idle_needed: reason = None
+						reason = watched_sync.sync_due(now, self.burst_every if now < burst_until else watched_sync.CHECK_SECONDS)
 					if reason:
 						status, message = watched_sync.run_sync(silent=True, reason=reason)
-						kodi_utils.logger('Red Light', 'Watched Sync %s - %s' % (status, message))
+						if status != 'unchanged': kodi_utils.logger('Red Light', 'Watched Sync %s - %s' % (status, message))
 			except Exception as e: kodi_utils.logger('Red Light', 'Watched Sync Failed: %s' % str(e))
-			# A cheap tick: the pending file's age and the stored last run decide when work
-			# happens. Checked in 2 second steps so a wake is answered at once.
-			for _step in range(self.tick // 2):
-				started = time()
-				if wait_for_abort(2): break
-				if kodi_utils.get_property(watched_sync_wake_prop) or time() - started > self.sleep_gap:
-					kodi_utils.clear_property(watched_sync_wake_prop)
-					pull_reason = 'wake'
-					break
-			if pull_reason == 'wake': wait_for_abort(self.wake_delay)
+			started = time()
+			if wait_for_abort(self.step): break
+			if kodi_utils.get_property(watched_sync_wake_prop) or time() - started > self.sleep_gap:
+				kodi_utils.clear_property(watched_sync_wake_prop)
+				pull_reason, burst_until = 'wake', time() + self.burst_seconds
+				wait_for_abort(self.wake_delay)
 		try: del player
 		except: pass
 		return kodi_utils.logger('Red Light', 'WatchedSyncMonitor Service Finished')

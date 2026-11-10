@@ -69,7 +69,14 @@ WATCH_MODES = frozenset(('build_next_episode', 'build_in_progress_episode', 'bui
 _NO_SNAPSHOT_PARAMS = ('random', 'shuffle', 'random_support', 'random_continual')
 _TAG_GETTERS = ('getVideoInfoTag', 'getMusicInfoTag')
 
-_state = {'key': None, 'ops': [], 'items': 0, 'failed': False, 'locked': False}
+# A rebuild lock taken by the player at a stop, for widget_prebuild: waiting widgets treat
+# it as dead sooner than an ordinary rebuild's, in case the player never gets to the build.
+_PREBUILD_LOCK_MARK = 'prebuild'
+_PREBUILD_LOCK_STALE_SEC = 15
+# The widget generation the watch widgets were last brought up to date for by widget_prebuild.
+PREBUILT_PROP = 'redlight.widget_prebuilt_generation'
+
+_state = {'key': None, 'ops': [], 'items': 0, 'failed': False, 'locked': False, 'hold': False, 'argv': None, 'mode': None}
 
 def _window():
 	return xbmcgui.Window(10000)
@@ -206,18 +213,27 @@ def user_inside_addon():
 def _lock_path():
 	return os.path.join(_cache_dir(), _REBUILD_LOCK)
 
-def _try_lock():
+def _lock_is_stale(path):
+	age = time.time() - os.path.getmtime(path)
+	if age > _LOCK_STALE_SEC: return True
+	if age > _PREBUILD_LOCK_STALE_SEC:
+		try:
+			with open(path, 'r') as handle: return handle.read().startswith(_PREBUILD_LOCK_MARK)
+		except Exception: return False
+	return False
+
+def _try_lock(mark=''):
 	path = _lock_path()
 	for _ in range(2):
 		try:
 			fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-			os.write(fd, str(time.time()).encode('utf-8'))
+			os.write(fd, ('%s%s' % (mark, time.time())).encode('utf-8'))
 			os.close(fd)
 			_state['locked'] = True
 			return True
 		except FileExistsError:
 			try:
-				if time.time() - os.path.getmtime(path) > _LOCK_STALE_SEC:
+				if _lock_is_stale(path):
 					os.remove(path)
 					continue
 			except Exception:
@@ -234,13 +250,76 @@ def _release_lock():
 	try: os.remove(_lock_path())
 	except Exception: pass
 
+# ---------------------------------------------------------------- lock held across builds (widget_prebuild)
+
+def hold_lock(wait_seconds=0):
+	"""Take the rebuild lock and keep it across several recorded builds. True when held."""
+	if _state.get('locked'):
+		_state['hold'] = True
+		return True
+	started = time.time()
+	while True:
+		if _try_lock(_PREBUILD_LOCK_MARK):
+			_state['hold'] = True
+			return True
+		if time.time() - started >= wait_seconds: return False
+		xbmc.sleep(250)
+
+def touch_lock():
+	"""Keep a held lock from looking dead to waiting widgets during a longer build."""
+	if not _state.get('locked'): return
+	try: os.utime(_lock_path(), None)
+	except Exception: pass
+
+def release_hold():
+	_state['hold'] = False
+	_release_lock()
+
+def watch_targets():
+	"""Stored watch-widget snapshots that know their own request: [(key, argv0, query, mode)]."""
+	targets = []
+	try: names = os.listdir(_cache_dir())
+	except Exception: return targets
+	for name in names:
+		if not name.endswith('.pkl'): continue
+		key = name[:-4]
+		try:
+			with open(os.path.join(_cache_dir(), name), 'rb') as handle: data = pickle.load(handle)
+		except Exception: continue
+		if not isinstance(data, dict) or data.get('key') != key: continue
+		mode, argv = data.get('mode'), data.get('argv')
+		if mode not in WATCH_MODES or not argv or len(argv) != 2: continue
+		if time.time() - float(data.get('time', 0)) > _STALE_MAX_AGE_SEC: continue
+		targets.append((key, argv[0], argv[1], mode))
+	return targets
+
+def mark_prebuilt():
+	try: _window().setProperty(PREBUILT_PROP, current_generation())
+	except Exception: pass
+
+def prebuilt_current():
+	"""The watch widgets were brought up to date for the current generation (widget_prebuild)."""
+	try:
+		value = _window().getProperty(PREBUILT_PROP)
+		return bool(value) and value == current_generation()
+	except Exception: return False
+
 def _wait_for_rebuild_turn(key, have_snapshot):
 	"""Returns 'locked' (build now), 'fresh' (a sibling just built this widget: replay it),
 	'stale' (replay the old snapshot, the rebuild waits for a later Home visit) or 'nolock'."""
 	if have_snapshot and user_inside_addon(): return 'stale'
-	started = time.time()
+	started, waited_any = time.time(), False
 	while True:
-		if _try_lock(): return 'locked'
+		if _try_lock():
+			# The lock holder may have just stored this widget (a sibling, or the player's
+			# prebuild) and released: replay that instead of building it again.
+			if waited_any:
+				data, fresh = _load(key)
+				if data and fresh:
+					_release_lock()
+					return 'fresh'
+			return 'locked'
+		waited_any = True
 		data, fresh = _load(key)
 		if data and fresh: return 'fresh'
 		waited = time.time() - started
@@ -282,12 +361,17 @@ def _addon_version():
 def recording():
 	return _state['key'] is not None and not _state['failed']
 
-def begin(key):
+def begin(key, argv=None, mode=None):
 	_state['key'], _state['ops'], _state['items'], _state['failed'] = key, [], 0, False
+	# The request itself is stored with the snapshot, so widget_prebuild can rebuild it.
+	try: _state['argv'] = [str(argv[0]), str(argv[2])] if argv else None
+	except Exception: _state['argv'] = None
+	_state['mode'] = mode
 
 def abandon():
 	_state['key'], _state['ops'], _state['items'], _state['failed'] = None, [], 0, False
-	_release_lock()
+	_state['argv'], _state['mode'] = None, None
+	if not _state.get('hold'): _release_lock()
 
 def _plain(value):
 	"""Make call arguments picklable. xbmc.Actor objects become tagged tuples."""
@@ -371,7 +455,7 @@ def record_end(update_listing, cache_to_disc):
 	key, ops, count = _state['key'], _state['ops'], _state['items']
 	if count > 0:
 		data = {'format': _FORMAT, 'key': key, 'generation': current_generation(), 'time': time.time(),
-				'version': _addon_version(), 'ops': ops}
+				'version': _addon_version(), 'ops': ops, 'argv': _state.get('argv'), 'mode': _state.get('mode')}
 		try:
 			payload = pickle.dumps(data, protocol=2)
 			path = _path(key)
@@ -475,7 +559,7 @@ def try_replay(argv, mode, params):
 			if outcome:
 				_log('replayed %s after waiting (%s)' % (mode, 'a sibling rebuilt it' if outcome == 'fresh' else 'stale, refresh follows'))
 				return True
-		begin(key)
+		begin(key, argv, mode)
 		if turn == 'locked': _state['locked'] = True
 	except Exception as error:
 		_log('skipped: %s' % error)

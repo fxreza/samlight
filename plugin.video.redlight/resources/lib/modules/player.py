@@ -106,6 +106,14 @@ class RedLightPlayer(xbmc.Player):
 			widget_snapshot.note_playback_end()
 			widget_snapshot.schedule_refresh_check()
 		except: pass
+		# Take the widget rebuild lock before Home asks for its widgets: this process updates
+		# the watch widgets once the watched mark is written (widget_prebuild), and Home's
+		# requests replay the result instead of each rebuilding from a cold start.
+		if getattr(self, '_monitor_running', False):
+			try:
+				from modules import widget_prebuild
+				widget_prebuild.reserve()
+			except: pass
 
 	def run(self, url=None, obj=None):
 		ku.hide_busy_dialog()
@@ -367,6 +375,16 @@ class RedLightPlayer(xbmc.Player):
 			ku.close_all_dialog()
 
 	def monitor(self):
+		self._monitor_running, self._write_threads = True, []
+		try: return self._monitor_playback()
+		finally:
+			self._monitor_running = False
+			try:
+				from modules import widget_prebuild
+				widget_prebuild.release()
+			except: pass
+
+	def _monitor_playback(self):
 		playback_superseded = False
 		self._user_stopped = False
 		self._playback_end_seen, self._playback_ended = False, False
@@ -566,6 +584,11 @@ class RedLightPlayer(xbmc.Player):
 				from modules.watched_status import clear_local_bookmarks
 				clear_local_bookmarks()
 			except: pass
+			if not playback_superseded and not autoplay_stash_scheduled:
+				try:
+					from modules import widget_prebuild
+					widget_prebuild.run(getattr(self, '_write_threads', ()))
+				except: pass
 			self.clear_playback_properties(clear_navigation=False)
 			self._release_active_playback()
 		except:
@@ -799,7 +822,7 @@ class RedLightPlayer(xbmc.Player):
 				watched_function = ws.mark_movie if self.media_type == 'movie' else ws.mark_episode
 				watched_params = {'action': 'mark_as_watched', 'tmdb_id': self.tmdb_id, 'title': self.title, 'year': self.year, 'season': self.season, 'episode': self.episode,
 									'tvdb_id': self.tvdb_id, 'from_playback': 'true'}
-				Thread(target=self.run_media_progress, args=(watched_function, watched_params), daemon=True).start()
+				self._start_write_thread(watched_function, watched_params)
 			else:
 				# Always stop Trakt live scrobble so Playing now clears. Below ~80% Trakt treats stop as pause + resume.
 				self._trakt_scrobble_stop(current_point)
@@ -816,8 +839,15 @@ class RedLightPlayer(xbmc.Player):
 						ws.set_bookmark(progress_params, remote=False)
 					except Exception:
 						pass
-					Thread(target=self.run_media_progress, args=(ws.set_bookmark, progress_params), daemon=True).start()
+					self._start_write_thread(ws.set_bookmark, progress_params)
 		except: pass
+
+	def _start_write_thread(self, function, params):
+		# Kept so widget_prebuild can wait for the write before it rebuilds the widgets.
+		thread = Thread(target=self.run_media_progress, args=(function, params), daemon=True)
+		thread.start()
+		try: self._write_threads.append(thread)
+		except AttributeError: self._write_threads = [thread]
 
 	def run_media_progress(self, function, params):
 		try: function(params)

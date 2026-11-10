@@ -516,20 +516,28 @@ def make_listitem(offscreen=True):
 	# ListItem; every setter still reaches Kodi, and is noted for the snapshot.
 	return widget_snapshot.new_listitem(offscreen)
 
+# A listing built only to refresh a widget snapshot (widget_prebuild, in the player's
+# process after a stop) is recorded but never sent to Kodi: there is no directory request.
+_dry_listing = False
+
 def add_item(handle, url, listitem, isFolder):
 	widget_snapshot.record_items([(url, listitem, isFolder)])
+	if _dry_listing: return
 	xbmcplugin.addDirectoryItem(handle, url, widget_snapshot.unwrap(listitem), isFolder)
 
 def add_items(handle, item_list):
 	widget_snapshot.record_items(item_list)
+	if _dry_listing: return
 	xbmcplugin.addDirectoryItems(handle, [(url, widget_snapshot.unwrap(listitem), isFolder) for url, listitem, isFolder in item_list])
 
 def set_content(handle, content):
 	widget_snapshot.record_content(content)
+	if _dry_listing: return
 	xbmcplugin.setContent(handle, content)
 
 def set_category(handle, label):
 	widget_snapshot.record_category(label)
+	if _dry_listing: return
 	xbmcplugin.setPluginCategory(handle, label)
 
 # Set by the router for directory requests; end_directory logs how long the build took.
@@ -539,6 +547,7 @@ def end_directory(handle, updateListing=False, cacheToDisc=True):
 	global _listing_started
 	stored = widget_snapshot.recording()
 	widget_snapshot.record_end(updateListing, cacheToDisc)
+	if _dry_listing: return
 	xbmcplugin.endOfDirectory(handle, updateListing=updateListing, cacheToDisc=cacheToDisc)
 	if _listing_started:
 		try:
@@ -581,6 +590,7 @@ def _resolve_view_id(view_type, fallback_view_types=()):
 	return view_id
 
 def set_view_mode(view_type, content='files', is_external=None, fallback_view_types=()):
+	if _dry_listing: return
 	if get_property('redlight.use_viewtypes') != 'true': return
 	if is_external == None: is_external = external()
 	if is_external: return
@@ -695,6 +705,7 @@ def container_content():
 
 def set_sort_method(handle, method, labelMask=''):
 	widget_snapshot.record_sort_method(method, labelMask)
+	if _dry_listing: return
 	xbmcplugin.addSortMethod(handle, {'episodes': 24, 'files': 5, 'label': 2, 'none': 0}[method], labelMask=labelMask)
 
 def make_session(url='https://'):
@@ -975,6 +986,15 @@ def playback_widget_check():
 		return
 	stale_replayed = widget_snapshot.refresh_needed()
 	if not stale_replayed and (not saved or built >= saved): return
+	if widget_snapshot.prebuilt_current():
+		# The player already brought Next Episodes, In Progress and Recently Watched up to date
+		# after the stop: refresh without invalidating, so those replay their fresh snapshot
+		# and only the widgets that showed an old one rebuild.
+		logger('Red Light', 'Home widgets %s: refreshing once (watch widgets already up to date)' % ('replayed a stale snapshot' if stale_replayed else 'were built before playback saved'))
+		widget_snapshot.clear_playback_end_grace()
+		widget_snapshot.clear_refresh_needed()
+		execute_builtin('UpdateLibrary(video,special://skin/foo)')
+		return
 	logger('Red Light', 'Home widgets %s: refreshing once' % ('replayed a stale snapshot' if stale_replayed else 'were built before playback saved'))
 	kodi_refresh()
 
