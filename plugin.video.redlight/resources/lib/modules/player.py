@@ -806,6 +806,15 @@ class RedLightPlayer(xbmc.Player):
 		self.media_marked = True
 		try:
 			self._refresh_playback_position(allow_stale=True)
+			# Rewound and stopped within a second: the one backward sample had no time to be
+			# confirmed. A position past the first seconds is a real rewind, not a bad read.
+			candidate = getattr(self, '_rewind_candidate', None)
+			if candidate is not None and candidate >= 5 and not self.isPlayingVideo():
+				try:
+					self.curr_time = candidate
+					self.current_point = round(float(candidate) / float(self.total_time) * 100, 1)
+				except Exception: pass
+				self._rewind_candidate = None
 			current_point = getattr(self, 'current_point', 0) or 0
 			try:
 				ku.logger('Red Light', 'playback stop progress: %.1f%% (curr=%.1fs total=%.1fs)' % (
@@ -993,15 +1002,24 @@ class RedLightPlayer(xbmc.Player):
 		'''Update curr_time / total_time / current_point. Keep last good sample if live read fails.'''
 		curr, total = self._read_player_times()
 		if total not in (None, 0, 0.0) and curr not in (None,) and float(total) >= 60 and float(curr) > 0:
-			# Honour forward seeks: never shrink a known larger position on a bad post-seek sample.
+			# A single sample behind the known position can be a bad post-seek read (Kodi may
+			# report 0 for a moment): keep the previous one. A second sample near the first
+			# one means the user really went back, and that position counts. Before, every
+			# backward sample was dropped, so a rewind never moved the resume point back.
 			prev = getattr(self, 'curr_time', None)
 			try:
 				prev_f = float(prev) if prev not in (None, '') else 0.0
 			except Exception:
 				prev_f = 0.0
 			if float(curr) + 2.0 < prev_f and prev_f > 30:
-				# Likely a transient 0/start sample after seek — keep previous.
-				curr = prev_f
+				candidate = getattr(self, '_rewind_candidate', None)
+				if candidate is not None and abs(float(curr) - candidate) <= 10:
+					self._rewind_candidate = None
+				else:
+					self._rewind_candidate = float(curr)
+					curr = prev_f
+			else:
+				self._rewind_candidate = None
 			self.total_time, self.curr_time = float(total), float(curr)
 			self.current_point = round(float(self.curr_time) / float(self.total_time) * 100, 1)
 			return True

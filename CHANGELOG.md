@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.12.1.1] - 2026-11-09
+
+- Rewinding now moves the resume point back. Going back in a movie or episode (from minute 20 to minute 10, say) and stopping saved the furthest point reached instead, on every device: the player dropped every position behind the one it knew, to ignore the odd wrong reading Kodi gives right after a seek. It now ignores a single such reading and accepts the earlier position once the next reading confirms it, or when you stop right after rewinding. The watched sync then carries the rewound point to your other devices like any other stop.
+
 ## [2.12.0.1] - 2026-11-09
 
 - Watched sync is much faster. Your own changes are sent about 10 seconds after playback stops (was 90 seconds plus a wait for the remote to go idle, up to 10 minutes). Other devices' changes are checked for once a minute while nothing plays (was once an hour), and every 10 seconds for two minutes after you pick up the remote after a quiet minute, so a TV left on Kodi's Home catches up as soon as you use it. A check is one small request; the file is only downloaded when it changed, and an unchanged check opens no database and writes nothing. The "Pull Every (minutes)" setting is gone.
