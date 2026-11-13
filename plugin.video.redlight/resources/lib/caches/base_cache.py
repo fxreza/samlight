@@ -359,22 +359,17 @@ def clear_cache(cache_type, silent=False):
 
 def clear_all_cache():
 	if not kodi_utils.confirm_dialog(): return
-	from modules.search import clear_easynews_search_history
 	progressDialog = kodi_utils.progress_dialog()
 	line = 'Clearing....[CR]%s'
 	caches = (('meta', 'Meta Cache'), ('ai_functions', 'AI Data Cache'), ('list', 'List Data Cache'), ('main', 'Main Cache'),
-			('tmdb_list', 'TMDb Personal List Cache'), ('imdb', 'IMDb Cache'), ('mdblist', 'MDBList Cache'), ('punchplay', 'PunchPlay Cache'), ('simkl', 'Simkl Cache'),
-			('trakt', 'Trakt Cache'), ('subtitles', 'Subtitles Cache'), ('internal_scrapers', 'Internal Scrapers Cache'),
-			('external_scrapers', 'External Scrapers Cache'), ('ad_cloud', 'All Debrid Cloud'), ('oc_cloud', 'Offcloud Cloud'),
-			('pm_cloud', 'Premiumize Cloud'), ('rd_cloud', 'Real Debrid Cloud'), ('tb_cloud', 'TorBox Cloud'))
+			('tmdb_list', 'TMDb Personal List Cache'), ('imdb', 'IMDb Cache'), ('trakt', 'Trakt Cache'), ('subtitles', 'Subtitles Cache'),
+			('external_scrapers', 'External Scrapers Cache'), ('pm_cloud', 'Premiumize Cloud'), ('tb_cloud', 'TorBox Cloud'))
 	for count, cache_type in enumerate(caches, 1):
 		try:
 			progressDialog.update(line % (cache_type[1]), int(float(count) / float(len(caches)) * 100))
 			clear_cache(cache_type[0], silent=True)
 			kodi_utils.sleep(1000)
 		except: pass
-	try: clear_easynews_search_history(silent=True)
-	except: pass
 	try:
 		from modules import widget_snapshot
 		widget_snapshot.clear_all()

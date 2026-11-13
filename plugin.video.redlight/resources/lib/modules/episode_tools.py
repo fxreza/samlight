@@ -159,7 +159,7 @@ def build_next_episode_manager(params={}):
 			poster, fanart = meta.get('poster') or icon, meta.get('fanart') or addon_fanart
 			# No clear logo: skins would draw it instead of the Drop / Undrop text and the [DROPPED] tag.
 			listitem.setArt({'poster': poster, 'thumb': poster, 'icon': poster, 'fanart': fanart, 'landscape': meta.get('landscape') or fanart})
-			info_tag = listitem.getVideoInfoTag(True)
+			info_tag = listitem.getVideoInfoTag()
 			info_tag.setMediaType('tvshow')
 			# TV show views show the title, not the label, so the title carries the same text.
 			info_tag.setTitle(display)
@@ -192,7 +192,7 @@ def build_next_episode_manager(params={}):
 	filter_item.setLabel(filter_label)
 	filter_icon = kodi_utils.get_icon('settings2')
 	filter_item.setArt({'poster': filter_icon, 'thumb': filter_icon, 'icon': filter_icon, 'fanart': addon_fanart})
-	filter_tag = filter_item.getVideoInfoTag(True)
+	filter_tag = filter_item.getVideoInfoTag()
 	filter_tag.setTitle(filter_label)
 	filter_tag.setPlot('Choose which shows to list: all of them, only dropped shows, or only shows that are not dropped.')
 	item_list.insert(0, (build_url({'mode': 'next_episode_manager_filter', 'show_filter': show_filter}), filter_item, False))

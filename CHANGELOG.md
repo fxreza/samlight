@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.12.4.1] - 2026-11-13
+
+- Works on Kodi 22. Every movie, show, season and episode list was empty on Kodi 22 (Trending, search, categories, widgets): Kodi 22 no longer accepts the argument the add-on passed when filling in each item's details (`getVideoInfoTag(True)`), so every item failed and was silently left out. The call no longer passes it, which also works on Kodi 21.
+- Database & Cache Maintenance only lists the services in use: TMDb, Trakt, Premiumize and TorBox. The Clear entries for MDBList, PunchPlay, Simkl, EasyNews (scrape cache and search history), Internal Scrapers, All Debrid, Offcloud and Real Debrid are gone, and Clear All Cache no longer clears them either. The add-on's own caches (Meta, Main, Lists, IMDb, AI Data, Subtitles, External Scrapers, Search History, Favorites) stay.
+
 ## [2.12.3.1] - 2026-11-09
 
 - Trakt lists you follow without a Trakt login (liked lists, other users' lists, Trakt's own lists) now pick up their changes within about half an hour. Their saved contents were only cleared by the daily Trakt sync, which since the background Trakt timer was removed only runs during a Trakt action, so without a login a list such as "Latest Releases" could stay weeks old on one device while another showed the new one. Now, at most every 30 minutes, building the list (as a widget or a menu) asks Trakt when the list last changed: one small request, no login, and the full list is only downloaded again when it did change. Nothing runs on a timer.

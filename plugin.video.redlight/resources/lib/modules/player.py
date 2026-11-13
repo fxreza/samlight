@@ -602,7 +602,7 @@ class RedLightPlayer(xbmc.Player):
 		listitem.setPath(self.url)
 		listitem.setContentLookup(False)
 		if self.is_generic:
-			info_tag = listitem.getVideoInfoTag(True)
+			info_tag = listitem.getVideoInfoTag()
 			info_tag.setMediaType('video')
 			play_name = ku.get_property('redlight.tb.play_filename') or self.url
 			info_tag.setFilenameAndPath(play_name)
@@ -641,7 +641,7 @@ class RedLightPlayer(xbmc.Player):
 			if self.media_type == 'movie':
 				plot = self.meta_get('plot') if st.show_loading_plot() else ''
 				listitem.setArt({'poster': poster, 'fanart': fanart, 'icon': poster, 'clearlogo': clearlogo})
-				info_tag = listitem.getVideoInfoTag(True)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setMediaType('movie'), info_tag.setTitle(self.title), info_tag.setOriginalTitle(self.meta_get('original_title')), info_tag.setPlot(plot)
 				info_tag.setYear(int(self.year)), info_tag.setRating(rating), info_tag.setVotes(votes), info_tag.setMpaa(mpaa)
 				info_tag.setDuration(duration), info_tag.setCountries(country), info_tag.setTrailer(trailer), info_tag.setPremiered(premiered)
@@ -653,7 +653,7 @@ class RedLightPlayer(xbmc.Player):
 				elif st.avoid_episode_spoilers() and int(self.meta_get('playcount') or 0) == 0: plot = self.meta_get('tvshow_plot') or '* Hidden to Prevent Spoilers *'
 				else: plot = self.meta_get('plot') or self.meta_get('tvshow_plot')
 				listitem.setArt({'poster': poster, 'fanart': fanart, 'icon': poster, 'clearlogo': clearlogo, 'tvshow.poster': poster, 'tvshow.clearlogo': clearlogo})
-				info_tag = listitem.getVideoInfoTag(True)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setMediaType('episode'), info_tag.setTitle(self.meta_get('ep_name')), info_tag.setOriginalTitle(self.meta_get('original_title'))
 				info_tag.setTvShowTitle(self.title), info_tag.setTvShowStatus(self.meta_get('status')), info_tag.setSeason(self.season), info_tag.setEpisode(self.episode)
 				info_tag.setPlot(plot), info_tag.setYear(int(self.year)), info_tag.setRating(rating), info_tag.setVotes(votes)
@@ -1512,7 +1512,7 @@ class RedLightPlayer(xbmc.Player):
 			listitem.setProperty('StartPercent', '0')
 		listitem.setProperty('StartOffset', '0')
 		try:
-			listitem.getVideoInfoTag(True).setResumePoint(0.0)
+			listitem.getVideoInfoTag().setResumePoint(0.0)
 		except:
 			pass
 

@@ -90,7 +90,7 @@ def get_mdbl_lists(params):
 				listitem = kodi_utils.make_listitem()
 				listitem.setLabel(display)
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})
-				info_tag = listitem.getVideoInfoTag(True)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setPlot(_mdbl_folder_plot(item))
 				cm = [('[B]Force Refresh This List[/B]', 'RunPlugin(%s)' % build_url(
 					{'mode': 'mdblist.mdblist_force_refresh_list', 'list_id': list_id, 'list_type': item_list_type}))]
@@ -134,7 +134,7 @@ def get_mdbl_liked_lists(params):
 				listitem = kodi_utils.make_listitem()
 				listitem.setLabel(display)
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})
-				info_tag = listitem.getVideoInfoTag(True)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setPlot(_mdbl_folder_plot(item, user))
 				cm = [('[B]Force Refresh This List[/B]', 'RunPlugin(%s)' % build_url(
 					{'mode': 'mdblist.mdblist_force_refresh_list', 'list_id': list_id, 'list_type': 'liked_lists'}))]
@@ -172,7 +172,7 @@ def get_mdbl_top_lists(params):
 				listitem = kodi_utils.make_listitem()
 				listitem.setLabel(display)
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})
-				info_tag = listitem.getVideoInfoTag(True)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setPlot(_mdbl_folder_plot(item, user))
 				cm = [('[B]Force Refresh This List[/B]', 'RunPlugin(%s)' % build_url(
 					{'mode': 'mdblist.mdblist_force_refresh_list', 'list_id': list_id, 'list_type': 'user_lists'}))]
@@ -207,7 +207,7 @@ def search_mdbl_my_lists(params):
 				listitem = kodi_utils.make_listitem()
 				listitem.setLabel(display)
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})
-				info_tag = listitem.getVideoInfoTag(True)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setPlot(_mdbl_folder_plot(item))
 				yield (url, listitem, True)
 			except: pass
@@ -254,7 +254,7 @@ def search_mdbl_lists(params):
 				listitem = kodi_utils.make_listitem()
 				listitem.setLabel(display)
 				listitem.setArt({'icon': icon, 'poster': icon, 'thumb': icon, 'fanart': fanart, 'banner': fanart})
-				info_tag = listitem.getVideoInfoTag(True)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setPlot(_mdbl_folder_plot(item, user))
 				listitem.addContextMenuItems(cm)
 				yield (url, listitem, True)

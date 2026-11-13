@@ -67,7 +67,7 @@ def _paint_episode_list_packet(packet, item_list_append, make_listitem, kodi_act
 	try:
 		listitem = make_listitem()
 		set_properties = listitem.setProperties
-		info_tag = listitem.getVideoInfoTag(True)
+		info_tag = listitem.getVideoInfoTag()
 		info_tag.setMediaType('episode'), info_tag.setOriginalTitle(packet['orig_title']), info_tag.setTitle(packet['display_title'])
 		info_tag.setGenres(packet['genre'] or [])
 		if not packet.get('omit_tvshowtitle'): info_tag.setTvShowTitle(packet['tvshowtitle'])
@@ -172,7 +172,7 @@ def build_episode_list(params):
 					except: pass
 				cm = [i[1] for i in cm]
 				studios = list(studio) if isinstance(studio, tuple) else (studio or [])
-				info_tag = listitem.getVideoInfoTag(True)
+				info_tag = listitem.getVideoInfoTag()
 				info_tag.setMediaType('episode'), info_tag.setTitle(ep_name), info_tag.setOriginalTitle(orig_title), info_tag.setTvShowTitle(title), info_tag.setGenres(genre)
 				info_tag.setPlaycount(playcount), info_tag.setSeason(season), info_tag.setEpisode(episode), info_tag.setPlot(plot)
 				info_tag.setDuration(duration), info_tag.setIMDBNumber(imdb_id), info_tag.setUniqueIDs({'imdb': imdb_id, 'tmdb': str(tmdb_id), 'tvdb': str(tvdb_id)})
@@ -457,7 +457,7 @@ def build_single_episode(list_type, params={}):
 			# Legacy metacache used 1-tuples for studio; setStudios requires a list.
 			if isinstance(studio, tuple): studio = list(studio)
 			elif not studio: studio = []
-			info_tag = listitem.getVideoInfoTag(True)
+			info_tag = listitem.getVideoInfoTag()
 			info_tag.setMediaType('episode'), info_tag.setOriginalTitle(orig_title), info_tag.setTitle(display_title), info_tag.setGenres(genre)
 			# Optional: widgets that bind TVShowTitle as a second line under Label.
 			if not (is_external and omit_tvshowtitle_widgets):
